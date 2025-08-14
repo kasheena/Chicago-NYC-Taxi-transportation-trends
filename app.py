@@ -397,7 +397,7 @@ with tab_nyc:
                 tooltip=['year', 'payment_type_desc', 'trips']
             ).properties(height=320).configure_axis(
                 labelColor='#e6eef9', titleColor='#e6eef9'
-            ).configure_legend(title='Year', labelColor='#e6eef9', titleColor='#e6eef9')
+            ).configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
             st.altair_chart(c, use_container_width=True)
         else:
             st.info("No NYC payment data for selected year(s).")
@@ -411,7 +411,7 @@ with tab_nyc:
                 tooltip=['year', 'vendor_name', 'trips']
             ).properties(height=320).configure_axis(
                 labelColor='#e6eef9', titleColor='#e6eef9'
-            ).configure_legend(title='Year', labelColor='#e6eef9', titleColor='#e6eef9')
+            ).configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
             st.altair_chart(c, use_container_width=True)
         else:
             st.info("No NYC vendor data for selected year(s).")
@@ -447,7 +447,7 @@ with tab_chi:
             tooltip=['year', alt.Tooltip('month:T'), 'trips:Q']
         ).properties(height=320).configure_axis(
             labelColor='#e6eef9', titleColor='#e6eef9'
-        ).configure_legend(title='Year', labelColor='#e6eef9', titleColor='#e6eef9')
+        ).configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
         st.altair_chart(c, use_container_width=True)
     else:
         st.info("No Chicago data for selected year(s).")
@@ -508,7 +508,7 @@ with tab_chi:
             tooltip=['year', alt.Tooltip('month:T'), 'avg_fare:Q']
         ).properties(height=320).configure_axis(
             labelColor='#e6eef9', titleColor='#e6eef9'
-        ).configure_legend(title='Year', labelColor='#e6eef9', titleColor='#e6eef9')
+        ).configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
         st.altair_chart(c, use_container_width=True)
     else:
         st.info("No Chicago fare data for selected year(s).")
@@ -541,7 +541,7 @@ with tab_traffic:
             color=alt.Color('year:N', scale=alt.Scale(range=['#FF7A00', '#0A84FF'])),
             tooltip=['year','hour','avg_speed']
         ).properties(height=320).configure_axis(labelColor='#e6eef9', titleColor='#e6eef9') \
-         .configure_legend(title='Year', labelColor='#e6eef9', titleColor='#e6eef9')
+         .configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
         st.altair_chart(c, use_container_width=True)
     else:
         st.info("No traffic data for selected year(s).")
@@ -633,7 +633,7 @@ with tab_comp:
                 tooltip=['year', alt.Tooltip('month:T'), 'trips:Q']
             ).properties(height=320).configure_axis(
                 labelColor='#e6eef9', titleColor='#e6eef9'
-            ).configure_legend(title='Year', labelColor='#e6eef9', titleColor='#e6eef9')
+            ).configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
             st.altair_chart(c, use_container_width=True)
         else:
             st.info("No NYC data for selected year(s).")
@@ -647,7 +647,7 @@ with tab_comp:
                 tooltip=['year', alt.Tooltip('month:T'), 'trips:Q']
             ).properties(height=320).configure_axis(
                 labelColor='#e6eef9', titleColor='#e6eef9'
-            ).configure_legend(title='Year', labelColor='#e6eef9', titleColor='#e6eef9')
+            ).configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
             st.altair_chart(c, use_container_width=True)
         else:
             st.info("No Chicago data for selected year(s).")
