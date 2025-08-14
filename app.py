@@ -457,20 +457,51 @@ nyc_pu = qdf(sql_nyc_pu)
 st.dataframe(nyc_pu, use_container_width=True)
 
 # -----------------------------
-# Chicago — Pickup Density (lat/lon scatter; requires 2023 table columns)
+# Pickup Density Maps — NYC & Chicago (2023 busiest spots)
 # -----------------------------
-st.subheader("Chicago — Pickup Points (sample)")
-sql_chi_pts = f"""
-SELECT pickup_centroid_latitude AS lat, pickup_centroid_longitude AS lon
-FROM {DB_ALIAS}.main.chicago_taxi_2023
-WHERE pickup_centroid_latitude IS NOT NULL AND pickup_centroid_longitude IS NOT NULL
-LIMIT 5000;
-"""
-chi_pts = qdf(sql_chi_pts)
-if not chi_pts.empty:
-    st.map(chi_pts.rename(columns={"lat":"latitude","lon":"longitude"}), use_container_width=True)
-else:
-    st.info("No Chicago pickup coordinates available.")
+st.subheader("Pickup Density — 2023 Busiest Locations")
+
+lmap, rmap = st.columns(2)
+
+# NYC Pickup Density
+with lmap:
+    sql_nyc_pts = f"""
+    SELECT 
+        ROUND(pickup_latitude, 5) AS lat,
+        ROUND(pickup_longitude, 5) AS lon,
+        COUNT(*) AS trips
+    FROM {DB_ALIAS}.main.yellow_taxi_2023
+    WHERE pickup_latitude IS NOT NULL AND pickup_longitude IS NOT NULL
+    GROUP BY 1, 2
+    ORDER BY trips DESC
+    LIMIT 5000;
+    """
+    nyc_pts = qdf(sql_nyc_pts)
+    if not nyc_pts.empty:
+        st.markdown("**NYC — Top Pickup Locations**")
+        st.map(nyc_pts.rename(columns={"lat":"latitude","lon":"longitude"}))
+    else:
+        st.info("No NYC pickup coordinates available.")
+
+# Chicago Pickup Density
+with rmap:
+    sql_chi_pts = f"""
+    SELECT 
+        ROUND(pickup_centroid_latitude, 5) AS lat,
+        ROUND(pickup_centroid_longitude, 5) AS lon,
+        COUNT(*) AS trips
+    FROM {DB_ALIAS}.main.chicago_taxi_2023
+    WHERE pickup_centroid_latitude IS NOT NULL AND pickup_centroid_longitude IS NOT NULL
+    GROUP BY 1, 2
+    ORDER BY trips DESC
+    LIMIT 5000;
+    """
+    chi_pts = qdf(sql_chi_pts)
+    if not chi_pts.empty:
+        st.markdown("**Chicago — Top Pickup Locations**")
+        st.map(chi_pts.rename(columns={"lat":"latitude","lon":"longitude"}))
+    else:
+        st.info("No Chicago pickup coordinates available.")
 
 # -----------------------------
 # Actionable Notes (auto)
