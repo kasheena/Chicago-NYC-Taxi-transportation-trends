@@ -17,17 +17,47 @@ import requests
 import duckdb
 import streamlit as st
 
+import os
+import requests
+import duckdb
+import streamlit as st
+
+def download_file_from_google_drive(file_id, destination):
+    """Download large files from Google Drive with confirmation token handling."""
+    URL = "https://docs.google.com/uc?export=download"
+
+    session = requests.Session()
+    response = session.get(URL, params={'id': file_id}, stream=True)
+    token = get_confirm_token(response)
+
+    if token:
+        params = {'id': file_id, 'confirm': token}
+        response = session.get(URL, params=params, stream=True)
+
+    save_response_content(response, destination)
+
+def get_confirm_token(response):
+    """Extract confirmation token for large files."""
+    for key, value in response.cookies.items():
+        if key.startswith('download_warning'):
+            return value
+    return None
+
+def save_response_content(response, destination):
+    """Write the file to disk in chunks."""
+    CHUNK_SIZE = 32768
+    with open(destination, "wb") as f:
+        for chunk in response.iter_content(CHUNK_SIZE):
+            if chunk:
+                f.write(chunk)
+
 @st.cache_resource
 def get_connection():
     db_path = "nyc_taxi.duckdb"
     if not os.path.exists(db_path):
-        st.info("Downloading database file... This may take a while ⏳")
-        url = "https://drive.google.com/file/d/10XmGyzqzZvjznaIOfkjhbmj9hr4Zzmix/view?usp=drive_link"
-        r = requests.get(url, stream=True)
-        with open(db_path, "wb") as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                if chunk:
-                    f.write(chunk)
+        st.info("Downloading database file... This may take several minutes ⏳")
+        file_id = "10XmGyzqzZvjznaIOfkjhbmj9hr4Zzmix"  # from your link
+        download_file_from_google_drive(file_id, db_path)
         st.success("Database downloaded!")
     return duckdb.connect(db_path)
 
