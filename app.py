@@ -49,7 +49,7 @@ st.title("🚖 Chicago & NYC Transportation Analysis (MotherDuck)")
 # Helper to Load Table
 # -----------------------------
 def load_table(table_name):
-    query = f"SELECT * FROM motherduck_db.main.{table_name} LIMIT 5000"
+    query = f"SELECT * FROM taxi_assign.main.{table_name} LIMIT 5000"
     return conn.execute(query).fetchdf()
 
 # -----------------------------
