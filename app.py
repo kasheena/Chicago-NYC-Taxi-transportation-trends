@@ -463,27 +463,28 @@ st.subheader("Pickup Density — 2023 Busiest Locations")
 
 lmap, rmap = st.columns(2)
 
-# NYC Pickup Density
+# NYC Pickup Zones (2023) — No lat/lon, so show top zones by trip count
 with lmap:
-    sql_nyc_pts = f"""
+    sql_nyc_zones = f"""
     SELECT 
-        ROUND(pickup_latitude, 5) AS lat,
-        ROUND(pickup_longitude, 5) AS lon,
+        z.Zone,
+        z.Borough,
         COUNT(*) AS trips
-    FROM {DB_ALIAS}.main.yellow_taxi_2023
-    WHERE pickup_latitude IS NOT NULL AND pickup_longitude IS NOT NULL
-    GROUP BY 1, 2
+    FROM {DB_ALIAS}.main.yellow_taxi_2023 y
+    JOIN {DB_ALIAS}.main.NYC_zone_lookup z
+        ON y.PULocationID = z.LocationID
+    GROUP BY z.Zone, z.Borough
     ORDER BY trips DESC
-    LIMIT 5000;
+    LIMIT 20;
     """
-    nyc_pts = qdf(sql_nyc_pts)
-    if not nyc_pts.empty:
-        st.markdown("**NYC — Top Pickup Locations**")
-        st.map(nyc_pts.rename(columns={"lat":"latitude","lon":"longitude"}))
+    nyc_zones = qdf(sql_nyc_zones)
+    if not nyc_zones.empty:
+        st.markdown("**NYC — Top Pickup Zones (2023)**")
+        st.bar_chart(nyc_zones.set_index("Zone")["trips"])
     else:
-        st.info("No NYC pickup coordinates available.")
+        st.info("No NYC pickup data available.")
 
-# Chicago Pickup Density
+# Chicago Pickup Density (2023) — Keep using coordinates
 with rmap:
     sql_chi_pts = f"""
     SELECT 
@@ -498,8 +499,8 @@ with rmap:
     """
     chi_pts = qdf(sql_chi_pts)
     if not chi_pts.empty:
-        st.markdown("**Chicago — Top Pickup Locations**")
-        st.map(chi_pts.rename(columns={"lat":"latitude","lon":"longitude"}))
+        st.markdown("**Chicago — Top Pickup Locations (2023)**")
+        st.map(chi_pts.rename(columns={"lat": "latitude", "lon": "longitude"}))
     else:
         st.info("No Chicago pickup coordinates available.")
 
