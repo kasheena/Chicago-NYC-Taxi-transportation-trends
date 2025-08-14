@@ -151,11 +151,11 @@ cta_total = qdf(sql_cta).iloc[0]["total_rides"]
 sql_traffic_kpi = f"""
 SELECT
   2019 AS year, AVG(speed) AS avg_speed
-FROM {DB_ALIAS}.chicago_traffic_2019
+FROM {DB_ALIAS}.main.chicago_traffic_2019
 UNION ALL
 SELECT
   2023 AS year, AVG(speed) AS avg_speed
-FROM {DB_ALIAS}.chicago_traffic_2023
+FROM {DB_ALIAS}.main.chicago_traffic_2023
 ORDER BY year;
 """
 traffic_kpi = qdf(sql_traffic_kpi)
@@ -234,13 +234,13 @@ WITH base AS (
     2019 AS year,
     DATE_TRUNC('month', CAST(tpep_pickup_datetime AS TIMESTAMP)) AS month,
     1 AS cnt
-  FROM {DB_ALIAS}.yellow_taxi_2019_1
+  FROM {DB_ALIAS}.main.yellow_taxi_2019_1
   UNION ALL
   SELECT
     2023 AS year,
     DATE_TRUNC('month', CAST(tpep_pickup_datetime AS TIMESTAMP)) AS month,
     1 AS cnt
-  FROM {DB_ALIAS}.yellow_taxi_2023
+  FROM {DB_ALIAS}.main.yellow_taxi_2023
 )
 SELECT year, month, SUM(cnt) AS trips
 FROM base
