@@ -23,7 +23,7 @@ import duckdb
 import streamlit as st
 
 # --- MotherDuck Token ---
-MD_TOKEN = "taxidata eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...."  # your token
+MD_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imthc2hlZW5hcGVyc29uYWxAZ21haWwuY29tIiwic2Vzc2lvbiI6Imthc2hlZW5hcGVyc29uYWwuZ21haWwuY29tIiwicGF0IjoiUEk4WnZwcC1zNEFDZFYtRWYxaEtoX0k2aFZoZmhDTTJQRTRGY2Y5UVJQWSIsInVzZXJJZCI6Ijk4MWZiMjYzLTQ1NzEtNDk2OS04NWNkLWM0ZjA3MGE0ZTg4YSIsImlzcyI6Im1kX3BhdCIsInJlYWRPbmx5IjpmYWxzZSwidG9rZW5UeXBlIjoicmVhZF93cml0ZSIsImlhdCI6MTc1NTE3ODI4Mn0.bjWdIVWu-3suCbmyRu0UEr-jSu8kPmfpYrZ5xPH_-xo "  # your token
 DB_NAME = "nyc_taxi_db"
 GDRIVE_FILE_ID = "10XmGyzqzZvjznaIOfkjhbmj9hr4Zzmix"  # Google Drive file ID
 LOCAL_DB_PATH = "nyc_taxi.duckdb"
