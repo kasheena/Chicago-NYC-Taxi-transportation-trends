@@ -649,43 +649,70 @@ with tab_comp:
     We'll look at the overall trends in taxi trips and the busiest pickup locations in each city for both 2019 and 2023.
     """)
 
-    lcol, rcol = st.columns(2)
-    with lcol:
-        st.subheader("NYC Monthly Recovery")
-        if not nyc_monthly.empty:
-            c = alt.Chart(nyc_monthly).mark_bar().encode(
-                x=alt.X('month:O', title='Month', axis=alt.Axis(format=".0f")),
-                y=alt.Y('trip_count:Q', title='Trip Count'),
-                color=alt.Color('year:N', scale=alt.Scale(range=['#FF7A00', '#0A84FF'])),
-                column=alt.Column('year:N', header=alt.Header(labelColor='#e6eef9', title='Year')),
-                tooltip=['year', 'month', 'trip_count']
-            ).properties(height=320).configure_axis(
-                labelColor='#e6eef9', titleColor='#e6eef9'
-            ).configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
-            st.altair_chart(c, use_container_width=True)
-        else:
-            st.info("No NYC data for selected year(s).")
-    with rcol:
-        st.subheader("Chicago Monthly Recovery")
-        if not chi_monthly.empty:
-            c = alt.Chart(chi_monthly).mark_bar().encode(
-                x=alt.X('month:O', title='Month', axis=alt.Axis(format=".0f")),
-                y=alt.Y('trip_count:Q', title='Trip Count'),
-                color=alt.Color('year:N', scale=alt.Scale(range=['#FF7A00', '#0A84FF'])),
-                column=alt.Column('year:N', header=alt.Header(labelColor='#e6eef9', title='Year')),
-                tooltip=['year', 'month', 'trip_count']
-            ).properties(height=320).configure_axis(
-                labelColor='#e6eef9', titleColor='#e6eef9'
-            ).configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
-            st.altair_chart(c, use_container_width=True)
-        else:
-            st.info("No Chicago data for selected year(s).")
+    # Combined SQL query for NYC and Chicago monthly trips
+    sql_combined_monthly = f"""
+    WITH nyc_data AS (
+        SELECT
+            'NYC' AS city,
+            2019 AS year,
+            EXTRACT(MONTH FROM CAST(tpep_pickup_datetime AS TIMESTAMP)) AS month,
+            COUNT(*) AS trip_count
+        FROM {DB_ALIAS}.main.yellow_taxi_2019_1
+        GROUP BY 1, 2, 3
+        UNION ALL
+        SELECT
+            'NYC' AS city,
+            2023 AS year,
+            EXTRACT(MONTH FROM CAST(tpep_pickup_datetime AS TIMESTAMP)) AS month,
+            COUNT(*) AS trip_count
+        FROM {DB_ALIAS}.main.yellow_taxi_2023
+        GROUP BY 1, 2, 3
+    ),
+    chicago_data AS (
+        SELECT
+            'Chicago' AS city,
+            2019 AS year,
+            EXTRACT(MONTH FROM trip_start_timestamp) AS month,
+            COUNT(*) AS trip_count
+        FROM {DB_ALIAS}.main.chicago_taxi_2019
+        GROUP BY 1, 2, 3
+        UNION ALL
+        SELECT
+            'Chicago' AS city,
+            2023 AS year,
+            EXTRACT(MONTH FROM trip_start_timestamp) AS month,
+            COUNT(*) AS trip_count
+        FROM {DB_ALIAS}.main.chicago_taxi_2023
+        GROUP BY 1, 2, 3
+    )
+    SELECT * FROM nyc_data
+    UNION ALL
+    SELECT * FROM chicago_data
+    ORDER BY city, year, month;
+    """
+    combined_monthly_data = qdf(sql_combined_monthly)
+
+    st.subheader("Monthly Taxi Trips: NYC vs. Chicago (2019 & 2023)")
+    if not combined_monthly_data.empty:
+        c = alt.Chart(combined_monthly_data).mark_bar().encode(
+            x=alt.X('year:N', title=None, axis=alt.Axis(labels=False)),
+            xOffset=alt.XOffset('year:N', title=None),
+            y=alt.Y('trip_count:Q', title='Trip Count'),
+            color=alt.Color('year:N', title='Year', scale=alt.Scale(range=['#FF7A00', '#0A84FF'])),
+            column=alt.Column('city:N', header=alt.Header(title='City')),
+            tooltip=['city', 'year', 'month', 'trip_count']
+        ).properties(height=320).configure_axis(
+            labelColor='#e6eef9', titleColor='#e6eef9'
+        ).configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
+        st.altair_chart(c, use_container_width=True)
+    else:
+        st.info("No data available for comparison.")
 
 
     st.subheader("Pickup Density — Busiest Locations")
     comp_1, comp_2 = st.columns(2)
     with comp_1:
-        st.markdown("**NYC — Top Pickup Zones**")
+        st.markdown("**NYC — Top Pickup Zones (2023)**")
         sql_nyc_zones_2023 = f"""
         SELECT
             z.Zone,
@@ -704,7 +731,7 @@ with tab_comp:
         else:
             st.info("No NYC pickup data available for 2023.")
     with comp_2:
-        st.markdown("**Chicago — Top Pickup Locations**")
+        st.markdown("**Chicago — Top Pickup Locations (2023)**")
         sql_chi_pts_2023 = f"""
         SELECT
             ROUND(pickup_centroid_latitude, 5) AS lat,
@@ -778,7 +805,7 @@ with tab_conc:
         <li><b>Station Ops:</b> Top CTA stations with consistent growth should be prioritized for <i>platform staffing</i> and <i>crowd control</i> during peak windows.</li>
         <li><b>Rideshare Zones:</b> NYC PULocationID hotspots (ranked above) suggest <i>dedicated curb zones</i> and <i>pickup signage</i> to reduce conflicts.</li>
         <li><b>Congestion Relief:</b> Where <i>traffic avg speed dips</i> coincide with <i>high CTA ridership</i>, consider <i>bus-only lanes</i> and <i>TSP (signal priority)</i>.</li>
-        <li><b>Subsidy Tuning:</b> Compare 2023/2019 recovery by month; target incentives to <i>off-peak</i> or <i>under-recovered corridors</i>.</li>
+        <li><b>Subsidy Tuning:</i> Compare 2023/2019 recovery by month; target incentives to <i>off-peak</i> or <i>under-recovered corridors</i>.</li>
       </ul>
     </div>
     """, unsafe_allow_html=True)
