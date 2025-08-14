@@ -70,23 +70,22 @@ if not MD_TOKEN:
     st.stop()
 
 @st.cache_resource(show_spinner=False)
+
 def connect_md():
-    # Install & load extension (idempotent)
-    duckdb.sql("INSTALL motherduck;")
-    duckdb.sql("LOAD motherduck;")
-    duckdb.sql(f"SET motherduck_token='{MD_TOKEN}';")
-    # Attach the database
-    duckdb.sql(f"ATTACH 'md:{MD_DB_NAME}' AS {DB_ALIAS};")
-    # Return a connection bound to the current DuckDB context
-    return duckdb.connect()
+    conn = duckdb.connect()
+    conn.execute("INSTALL motherduck;")
+    conn.execute("LOAD motherduck;")
+    conn.execute(f"SET motherduck_token='{MD_TOKEN}';")
+    conn.execute(f"ATTACH 'md:{MD_DB_NAME}' AS {DB_ALIAS};")
+    return conn
 
 conn = connect_md()
 
 def qdf(sql: str, params: dict | None = None) -> pd.DataFrame:
-    """Query helper -> DataFrame."""
     if params:
         return conn.execute(sql, params).fetchdf()
     return conn.execute(sql).fetchdf()
+
 
 # -----------------------------
 # Header
