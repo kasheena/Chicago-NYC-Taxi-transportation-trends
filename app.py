@@ -8,10 +8,32 @@ import altair as alt
 # Database Connection
 # -----------------------------
 @st.cache_resource
+# def get_connection():
+#     return duckdb.connect("nyc_taxi.duckdb")
+
+# conn = get_connection()
+
+import os
+import requests
+import duckdb
+import streamlit as st
+
+@st.cache_resource
 def get_connection():
-    return duckdb.connect("nyc_taxi.duckdb")
+    db_path = "nyc_taxi.duckdb"
+    if not os.path.exists(db_path):
+        st.info("Downloading database file... This may take a while ⏳")
+        url = "https://drive.google.com/drive/folders/1t4yNYzYg5bwTOxh4alr5pudpd2H2tQsVb"
+        r = requests.get(url, stream=True)
+        with open(db_path, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+        st.success("Database downloaded!")
+    return duckdb.connect(db_path)
 
 conn = get_connection()
+
 
 # -----------------------------
 # Streamlit Page Config
