@@ -7,7 +7,6 @@ import altair as alt
 # -----------------------------
 # Database Connection
 # -----------------------------
-@st.cache_resource
 # def get_connection():
 #     return duckdb.connect("nyc_taxi.duckdb")
 
