@@ -22,16 +22,16 @@ import requests
 import duckdb
 import streamlit as st
 
-import os
-import requests
-import streamlit as st
-import duckdb
+# --- MotherDuck Token ---
+MD_TOKEN = "taxidata eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...."  # your token
+DB_NAME = "nyc_taxi_db"
+GDRIVE_FILE_ID = "10XmGyzqzZvjznaIOfkjhbmj9hr4Zzmix"  # Google Drive file ID
+LOCAL_DB_PATH = "nyc_taxi.duckdb"
 
+# --- Google Drive download helpers ---
 def download_file_from_google_drive(file_id, destination):
-    """Download large files from Google Drive with confirmation token handling."""
-    URL = "https://drive.google.com/uc?export=download"
+    URL = "https://docs.google.com/uc?export=download"
     session = requests.Session()
-
     response = session.get(URL, params={'id': file_id}, stream=True)
     token = get_confirm_token(response)
 
@@ -42,14 +42,12 @@ def download_file_from_google_drive(file_id, destination):
     save_response_content(response, destination)
 
 def get_confirm_token(response):
-    """Extract confirmation token for large files."""
     for key, value in response.cookies.items():
         if key.startswith('download_warning'):
             return value
     return None
 
 def save_response_content(response, destination):
-    """Write the file to disk in chunks."""
     CHUNK_SIZE = 32768
     with open(destination, "wb") as f:
         for chunk in response.iter_content(CHUNK_SIZE):
@@ -57,17 +55,41 @@ def save_response_content(response, destination):
                 f.write(chunk)
 
 @st.cache_resource
-def get_connection():
-    db_path = "nyc_taxi.duckdb"
-    if not os.path.exists(db_path):
-        st.info("Downloading database file... This may take several minutes ⏳")
-        file_id = "10XmGyzqzZvjznaIOfkjhbmj9hr4Zzmix"  # from your link
-        download_file_from_google_drive(file_id, db_path)
-        st.success("Database downloaded!")
+def setup_motherduck():
+    # Install & load MotherDuck extension
+    duckdb.sql("INSTALL motherduck;")
+    duckdb.sql("LOAD motherduck;")
+    duckdb.sql(f"SET motherduck_token='{MD_TOKEN}'")
 
-    return duckdb.connect(db_path, read_only=True)
+    # Step 1: If MotherDuck DB not present, upload from Google Drive
+    # You can check with duckdb.sql("SHOW DATABASES") if DB exists
+    try:
+        con = duckdb.connect(f"md:{DB_NAME}", config={"motherduck_token": MD_TOKEN})
+        con.execute("SELECT 1").fetchone()
+        st.info("Connected to existing MotherDuck database ✅")
+        return con
+    except Exception:
+        st.warning("MotherDuck DB not found, uploading from Google Drive...")
 
-conn = get_connection()
+        # Download DuckDB file locally
+        download_file_from_google_drive(GDRIVE_FILE_ID, LOCAL_DB_PATH)
+
+        # Attach local DB
+        duckdb.sql(f"ATTACH '{LOCAL_DB_PATH}' AS local_db (READ_ONLY)")
+
+        # Create MotherDuck DB from local
+        duckdb.sql(f"CREATE DATABASE md:{DB_NAME} AS local_db")
+
+        st.success("Uploaded to MotherDuck 🎉")
+        return duckdb.connect(f"md:{DB_NAME}", config={"motherduck_token": MD_TOKEN})
+
+# --- Main ---
+st.title("NYC Taxi Data - MotherDuck Demo")
+conn = setup_motherduck()
+
+# Example query
+df = conn.execute("SELECT * FROM chicago_taxi_2019 LIMIT 10").fetchdf()
+st.dataframe(df)
 
 
 
