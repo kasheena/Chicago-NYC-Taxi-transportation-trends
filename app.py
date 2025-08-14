@@ -22,7 +22,7 @@ def get_connection():
     db_path = "nyc_taxi.duckdb"
     if not os.path.exists(db_path):
         st.info("Downloading database file... This may take a while ⏳")
-        url = "https://drive.google.com/drive/folders/1t4yNYzYg5bwTOxh4alr5pudpd2H2tQsVb"
+        url = "https://drive.google.com/file/d/10XmGyzqzZvjznaIOfkjhbmj9hr4Zzmix/view?usp=drive_link"
         r = requests.get(url, stream=True)
         with open(db_path, "wb") as f:
             for chunk in r.iter_content(chunk_size=8192):
