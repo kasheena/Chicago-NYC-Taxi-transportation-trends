@@ -9,7 +9,7 @@ import altair as alt
 # -----------------------------
 @st.cache_resource
 def get_connection():
-    return duckdb.connect("/content/drive/MyDrive/Colab Notebooks/nyc_taxi.duckdb")
+    return duckdb.connect("data/nyc_taxi.duckdb")
 
 conn = get_connection()
 
