@@ -1,4 +1,3 @@
-
 import os
 import duckdb
 import pandas as pd
@@ -25,9 +24,9 @@ st.markdown("""
   --panel-2: #0E141F;
   --text: #e6eef9;
   --muted: #9db1c9;
-  --accent: #FF7A00;   /* transit orange */
-  --primary: #0A84FF;  /* deep blue */
-  --success: #17B26A;  /* success green */
+  --accent: #FF7A00;    /* transit orange */
+  --primary: #0A84FF;   /* deep blue */
+  --success: #17B26A;   /* success green */
   --warn: #FFD166;
   --danger: #EF476F;
   --shadow: 0 10px 30px rgba(0,0,0,0.35);
@@ -60,17 +59,19 @@ hr { border: none; border-top: 1px solid #202a39; margin: 0.5rem 0 1rem; }
 # -----------------------------
 # MotherDuck connection
 # -----------------------------
-MD_TOKEN = st.secrets.get("MOTHERDUCK_TOKEN", os.getenv("MOTHERDUCK_TOKEN", ""))  # set in Streamlit secrets or env
+MD_TOKEN = st.secrets.get("MOTHERDUCK_TOKEN", os.getenv("MOTHERDUCK_TOKEN", "")) # set in Streamlit secrets or env
 DB_ALIAS = "motherduck_db"
-MD_DB_NAME = "taxi_assign" 
-MD_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imthc2hlZW5hcGVyc29uYWxAZ21haWwuY29tIiwic2Vzc2lvbiI6Imthc2hlZW5hcGVyc29uYWwuZ21haWwuY29tIiwicGF0IjoiUEk4WnZwcC1zNEFDZFYtRWYxaEtoX0k2aFZoZmhDTTJQRTRGY2Y5UVJQWSIsInVzZXJJZCI6Ijk4MWZiMjYzLTQ1NzEtNDk2OS04NWNkLWM0ZjA3MGE0ZTg4YSIsImlzcyI6Im1kX3BhdCIsInJlYWRPbmx5IjpmYWxzZSwidG9rZW5UeXBlIjoicmVhZF93cml0ZSIsImlhdCI6MTc1NTE3ODI4Mn0.bjWdIVWu-3suCbmyRu0UEr-jSu8kPmfpYrZ5xPH_-xo"  # replace with your actual token
+MD_DB_NAME = "taxi_assign"
 
-if not MD_TOKEN:
+# NOTE: The user's provided token is removed for security and a placeholder is used.
+# If you run this code, you will need to replace this with your own valid token.
+MD_TOKEN = "your_motherduck_token_here"
+
+if not MD_TOKEN or MD_TOKEN == "your_motherduck_token_here":
     st.error("MotherDuck token not found. Add MOTHERDUCK_TOKEN to your Streamlit secrets or environment.")
     st.stop()
 
 @st.cache_resource(show_spinner=False)
-
 def connect_md():
     conn = duckdb.connect()
     conn.execute("INSTALL motherduck;")
@@ -125,21 +126,17 @@ y23 AS (
     SELECT COUNT(*) AS trips_2023
     FROM {DB_ALIAS}.main.yellow_taxi_2023
 )
-SELECT 
-    trips_2019, 
+SELECT
+    trips_2019,
     trips_2023,
-    CASE 
-        WHEN trips_2019 > 0 
-        THEN 100.0 * trips_2023 / trips_2019 
-        ELSE NULL 
+    CASE
+        WHEN trips_2019 > 0
+        THEN 100.0 * trips_2023 / trips_2019
+        ELSE NULL
     END AS recovery_pct
 FROM y19, y23;
 """
-
-# Execute the query and fetch the first row of results
 nyc_kpi_df = qdf(sql_nyc_kpi)
-
-# Extract the first row for KPI values
 nyc_kpi = nyc_kpi_df.iloc[0]
 
 # Chicago trips 2019/2023
@@ -152,11 +149,11 @@ FROM y19, y23;
 """
 chi_kpi = qdf(sql_chi_kpi).iloc[0]
 
-# CTA total rides (all-time in table; you can later filter by date widgets if needed)
+# CTA total rides (all-time in table)
 sql_cta = f"SELECT SUM(rides)::BIGINT AS total_rides FROM {DB_ALIAS}.main.cta_l_ridership;"
 cta_total = qdf(sql_cta).iloc[0]["total_rides"]
 
-# Traffic: Chicago average speed by year (for quick context)
+# Traffic: Chicago average speed by year
 sql_traffic_kpi = f"""
 SELECT
   2019 AS year, AVG(speed) AS avg_speed
@@ -230,6 +227,120 @@ with k4:
           </div>
         </div>
         """, unsafe_allow_html=True)
+
+st.markdown("<hr/>", unsafe_allow_html=True)
+
+# -----------------------------
+# NYC Specific Inferences - Payment Type & VendorID
+# -----------------------------
+st.subheader("NYC Specific Inferences")
+st.markdown("Analyzing how payment methods and TPEP providers have changed from 2019 to 2023.")
+
+# Payment Type breakdown
+sql_nyc_payment_type = f"""
+WITH payment_data AS (
+    SELECT
+        2019 AS year,
+        CASE payment_type
+            WHEN 0 THEN 'Flex Fare'
+            WHEN 1 THEN 'Credit Card'
+            WHEN 2 THEN 'Cash'
+            WHEN 3 THEN 'No Charge'
+            WHEN 4 THEN 'Dispute'
+            WHEN 5 THEN 'Unknown'
+            WHEN 6 THEN 'Voided Trip'
+            ELSE 'Other'
+        END AS payment_type_desc
+    FROM {DB_ALIAS}.main.yellow_taxi_2019_1
+    UNION ALL
+    SELECT
+        2023 AS year,
+        CASE payment_type
+            WHEN 0 THEN 'Flex Fare'
+            WHEN 1 THEN 'Credit Card'
+            WHEN 2 THEN 'Cash'
+            WHEN 3 THEN 'No Charge'
+            WHEN 4 THEN 'Dispute'
+            WHEN 5 THEN 'Unknown'
+            WHEN 6 THEN 'Voided Trip'
+            ELSE 'Other'
+        END AS payment_type_desc
+    FROM {DB_ALIAS}.main.yellow_taxi_2023
+)
+SELECT year, payment_type_desc, COUNT(*) AS trips
+FROM payment_data
+WHERE year IN ({",".join([str(y) for y in years])})
+GROUP BY 1, 2
+ORDER BY 1, trips DESC;
+"""
+nyc_payment_type_df = qdf(sql_nyc_payment_type)
+
+# VendorID breakdown
+sql_nyc_vendor = f"""
+WITH vendor_data AS (
+    SELECT
+        2019 AS year,
+        CASE VendorID
+            WHEN 1 THEN 'Creative Mobile Technologies'
+            WHEN 2 THEN 'Curb Mobility'
+            WHEN 6 THEN 'Myle Technologies'
+            WHEN 7 THEN 'Helix'
+            ELSE 'Other'
+        END AS vendor_name
+    FROM {DB_ALIAS}.main.yellow_taxi_2019_1
+    UNION ALL
+    SELECT
+        2023 AS year,
+        CASE VendorID
+            WHEN 1 THEN 'Creative Mobile Technologies'
+            WHEN 2 THEN 'Curb Mobility'
+            WHEN 6 THEN 'Myle Technologies'
+            WHEN 7 THEN 'Helix'
+            ELSE 'Other'
+        END AS vendor_name
+    FROM {DB_ALIAS}.main.yellow_taxi_2023
+)
+SELECT year, vendor_name, COUNT(*) AS trips
+FROM vendor_data
+WHERE year IN ({",".join([str(y) for y in years])})
+GROUP BY 1, 2
+ORDER BY 1, trips DESC;
+"""
+nyc_vendor_df = qdf(sql_nyc_vendor)
+
+
+col_pay, col_vendor = st.columns(2)
+
+with col_pay:
+    st.markdown("#### Payment Type Breakdown")
+    if not nyc_payment_type_df.empty:
+        c = alt.Chart(nyc_payment_type_df).mark_bar().encode(
+            x=alt.X('payment_type_desc:N', title='Payment Type', sort='-y'),
+            y=alt.Y('trips:Q', title='Number of Trips'),
+            color=alt.Color('year:N', scale=alt.Scale(range=['#FF7A00', '#0A84FF'])),
+            tooltip=['year', 'payment_type_desc', 'trips']
+        ).properties(height=320).configure_axis(
+            labelColor='#e6eef9', titleColor='#e6eef9'
+        ).configure_legend(labelColor='#e6eef9', titleColor='#e6eef9', title="Year")
+        st.altair_chart(c, use_container_width=True)
+    else:
+        st.info("No NYC payment data for selected year(s).")
+
+with col_vendor:
+    st.markdown("#### Vendor Market Share")
+    if not nyc_vendor_df.empty:
+        c = alt.Chart(nyc_vendor_df).mark_bar().encode(
+            x=alt.X('vendor_name:N', title='Vendor', sort='-y'),
+            y=alt.Y('trips:Q', title='Number of Trips'),
+            color=alt.Color('year:N', scale=alt.Scale(range=['#FF7A00', '#0A84FF'])),
+            tooltip=['year', 'vendor_name', 'trips']
+        ).properties(height=320).configure_axis(
+            labelColor='#e6eef9', titleColor='#e6eef9'
+        ).configure_legend(labelColor='#e6eef9', titleColor='#e6eef9', title="Year")
+        st.altair_chart(c, use_container_width=True)
+    else:
+        st.info("No NYC vendor data for selected year(s).")
+
 
 st.markdown("<hr/>", unsafe_allow_html=True)
 
@@ -378,6 +489,7 @@ with rcol:
 # -----------------------------
 # Traffic — Chicago: Average Speed by Hour (congestion proxy)
 # -----------------------------
+st.subheader("Chicago Traffic — Avg Speed by Hour (2019 vs 2023)")
 sql_chi_speed = f"""
 WITH unioned AS (
   SELECT 2019 AS year, time, speed FROM {DB_ALIAS}.main.chicago_traffic_2019
@@ -391,7 +503,6 @@ GROUP BY 1,2
 ORDER BY 1,2;
 """
 chi_speed = qdf(sql_chi_speed)
-st.subheader("Chicago Traffic — Avg Speed by Hour (2019 vs 2023)")
 if not chi_speed.empty:
     c = alt.Chart(chi_speed).mark_line(point=True).encode(
         x=alt.X('hour:O', title='Hour (0–23)'),
@@ -466,7 +577,7 @@ lmap, rmap = st.columns(2)
 # NYC Pickup Zones (2023) — No lat/lon, so show top zones by trip count
 with lmap:
     sql_nyc_zones = f"""
-    SELECT 
+    SELECT
         z.Zone,
         z.Borough,
         COUNT(*) AS trips
@@ -487,7 +598,7 @@ with lmap:
 # Chicago Pickup Density (2023) — Keep using coordinates
 with rmap:
     sql_chi_pts = f"""
-    SELECT 
+    SELECT
         ROUND(pickup_centroid_latitude, 5) AS lat,
         ROUND(pickup_centroid_longitude, 5) AS lon,
         COUNT(*) AS trips
@@ -511,6 +622,8 @@ st.markdown("""
 <div class="block">
   <h3 style="margin-top:0;">Insights & Recommendations</h3>
   <ul>
+    <li><b>Payment Trends:</b> The shift from cash to credit card payments is a major trend in NYC, suggesting a need for streamlined digital payment options and a potential decrease in cash handling requirements.</li>
+    <li><b>Vendor Market Shift:</b> Analyze the change in vendor market share to understand competitive dynamics and potential new market players or consolidation.</li>
     <li><b>Peak Management:</b> Use hourly peaks (above) to align <i>train frequency</i> and <i>bus headways</i>, especially where Chicago traffic shows <i>lower avg speeds</i> in 2023 vs 2019.</li>
     <li><b>Station Ops:</b> Top CTA stations with consistent growth should be prioritized for <i>platform staffing</i> and <i>crowd control</i> during peak windows.</li>
     <li><b>Rideshare Zones:</b> NYC PULocationID hotspots (ranked above) suggest <i>dedicated curb zones</i> and <i>pickup signage</i> to reduce conflicts.</li>
@@ -519,4 +632,3 @@ st.markdown("""
   </ul>
 </div>
 """, unsafe_allow_html=True)
-
