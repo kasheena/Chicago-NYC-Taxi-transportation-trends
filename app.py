@@ -22,11 +22,16 @@ import requests
 import duckdb
 import streamlit as st
 
+import os
+import requests
+import streamlit as st
+import duckdb
+
 def download_file_from_google_drive(file_id, destination):
     """Download large files from Google Drive with confirmation token handling."""
-    URL = "https://docs.google.com/uc?export=download"
-
+    URL = "https://drive.google.com/uc?export=download"
     session = requests.Session()
+
     response = session.get(URL, params={'id': file_id}, stream=True)
     token = get_confirm_token(response)
 
@@ -59,9 +64,11 @@ def get_connection():
         file_id = "10XmGyzqzZvjznaIOfkjhbmj9hr4Zzmix"  # from your link
         download_file_from_google_drive(file_id, db_path)
         st.success("Database downloaded!")
-    return duckdb.connect(db_path)
+
+    return duckdb.connect(db_path, read_only=True)
 
 conn = get_connection()
+
 
 
 # -----------------------------
