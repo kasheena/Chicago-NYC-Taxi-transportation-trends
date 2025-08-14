@@ -120,11 +120,11 @@ st.caption("Tip: You can filter down to a single year to zoom in.")
 sql_nyc_kpi = """
 WITH y19 AS (
   SELECT COUNT(*) AS trips_2019
-  FROM {db}.yellow_taxi_2019_1
+  FROM {db}.main.yellow_taxi_2019_1
 ),
 y23 AS (
   SELECT COUNT(*) AS trips_2023
-  FROM {db}.yellow_taxi_2023
+  FROM {db}.main.yellow_taxi_2023
 )
 SELECT trips_2019, trips_2023,
        CASE WHEN trips_2019>0 THEN 100.0 * trips_2023 / trips_2019 ELSE NULL END AS recovery_pct
