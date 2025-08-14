@@ -117,21 +117,31 @@ st.caption("Tip: You can filter down to a single year to zoom in.")
 # KPIs (all computed from your schemas only)
 # -----------------------------
 # NYC trips 2019/2023 (from pickup timestamp string)
-sql_nyc_kpi = """
+sql_nyc_kpi = f"""
 WITH y19 AS (
-  SELECT COUNT(*) AS trips_2019
-  FROM {DB_ALIAS}.main.yellow_taxi_2019_1
+    SELECT COUNT(*) AS trips_2019
+    FROM {DB_ALIAS}.main.yellow_taxi_2019_1
 ),
 y23 AS (
-  SELECT COUNT(*) AS trips_2023
-  FROM {DB_ALIAS}.main.yellow_taxi_2023
+    SELECT COUNT(*) AS trips_2023
+    FROM {DB_ALIAS}.main.yellow_taxi_2023
 )
-SELECT trips_2019, trips_2023,
-       CASE WHEN trips_2019>0 THEN 100.0 * trips_2023 / trips_2019 ELSE NULL END AS recovery_pct
+SELECT 
+    trips_2019, 
+    trips_2023,
+    CASE 
+        WHEN trips_2019 > 0 
+        THEN 100.0 * trips_2023 / trips_2019 
+        ELSE NULL 
+    END AS recovery_pct
 FROM y19, y23;
 """
 
-nyc_kpi = qdf(sql_nyc_kpi).iloc[0]
+# Execute the query and fetch the first row of results
+nyc_kpi_df = qdf(sql_nyc_kpi)
+
+# Extract the first row for KPI values
+nyc_kpi = nyc_kpi_df.iloc[0]
 
 # Chicago trips 2019/2023
 sql_chi_kpi = f"""
