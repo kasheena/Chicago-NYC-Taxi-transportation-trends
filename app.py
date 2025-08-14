@@ -59,6 +59,12 @@ hr { border: none; border-top: 1px solid #202a39; margin: 0.5rem 0 1rem; }
     font-weight: 500;
     color: var(--muted);
 }
+/* New CSS to constrain the app's overall width */
+.content-wrapper {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -93,6 +99,11 @@ def qdf(sql: str, params: dict | None = None) -> pd.DataFrame:
         return conn.execute(sql, params).fetchdf()
     return conn.execute(sql).fetchdf()
 
+
+# -----------------------------
+# Main Content
+# -----------------------------
+st.markdown("<div class='content-wrapper'>", unsafe_allow_html=True)
 
 # -----------------------------
 # Header & Global Filters
@@ -809,3 +820,5 @@ with tab_conc:
       </ul>
     </div>
     """, unsafe_allow_html=True)
+
+st.markdown("</div>", unsafe_allow_html=True)
