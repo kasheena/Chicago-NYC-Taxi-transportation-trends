@@ -5,100 +5,30 @@ import pandas as pd
 import altair as alt
 
 # -----------------------------
-# Database Connection
-# -----------------------------
-# def get_connection():
-#     return duckdb.connect("nyc_taxi.duckdb")
-
-# conn = get_connection()
-
-import os
-import requests
-import duckdb
-import streamlit as st
-
-import os
-import requests
-import duckdb
-import streamlit as st
-
-# --- MotherDuck Token ---
-MD_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imthc2hlZW5hcGVyc29uYWxAZ21haWwuY29tIiwic2Vzc2lvbiI6Imthc2hlZW5hcGVyc29uYWwuZ21haWwuY29tIiwicGF0IjoiUEk4WnZwcC1zNEFDZFYtRWYxaEtoX0k2aFZoZmhDTTJQRTRGY2Y5UVJQWSIsInVzZXJJZCI6Ijk4MWZiMjYzLTQ1NzEtNDk2OS04NWNkLWM0ZjA3MGE0ZTg4YSIsImlzcyI6Im1kX3BhdCIsInJlYWRPbmx5IjpmYWxzZSwidG9rZW5UeXBlIjoicmVhZF93cml0ZSIsImlhdCI6MTc1NTE3ODI4Mn0.bjWdIVWu-3suCbmyRu0UEr-jSu8kPmfpYrZ5xPH_-xo "  # your token
-DB_NAME = "nyc_taxi_db"
-GDRIVE_FILE_ID = "10XmGyzqzZvjznaIOfkjhbmj9hr4Zzmix"  # Google Drive file ID
-LOCAL_DB_PATH = "nyc_taxi.duckdb"
-
-# --- Google Drive download helpers ---
-def download_file_from_google_drive(file_id, destination):
-    URL = "https://docs.google.com/uc?export=download"
-    session = requests.Session()
-    response = session.get(URL, params={'id': file_id}, stream=True)
-    token = get_confirm_token(response)
-
-    if token:
-        params = {'id': file_id, 'confirm': token}
-        response = session.get(URL, params=params, stream=True)
-
-    save_response_content(response, destination)
-
-def get_confirm_token(response):
-    for key, value in response.cookies.items():
-        if key.startswith('download_warning'):
-            return value
-    return None
-
-def save_response_content(response, destination):
-    CHUNK_SIZE = 32768
-    with open(destination, "wb") as f:
-        for chunk in response.iter_content(CHUNK_SIZE):
-            if chunk:
-                f.write(chunk)
-
-@st.cache_resource
-def setup_motherduck():
-    # Install & load MotherDuck extension
-    duckdb.sql("INSTALL motherduck;")
-    duckdb.sql("LOAD motherduck;")
-    duckdb.sql(f"SET motherduck_token='{MD_TOKEN}'")
-
-    # Step 1: If MotherDuck DB not present, upload from Google Drive
-    # You can check with duckdb.sql("SHOW DATABASES") if DB exists
-    try:
-        con = duckdb.connect(f"md:{DB_NAME}", config={"motherduck_token": MD_TOKEN})
-        con.execute("SELECT 1").fetchone()
-        st.info("Connected to existing MotherDuck database ✅")
-        return con
-    except Exception:
-        st.warning("MotherDuck DB not found, uploading from Google Drive...")
-
-        # Download DuckDB file locally
-        download_file_from_google_drive(GDRIVE_FILE_ID, LOCAL_DB_PATH)
-
-        # Attach local DB
-        duckdb.sql(f"ATTACH '{LOCAL_DB_PATH}' AS local_db (READ_ONLY)")
-
-        # Create MotherDuck DB from local
-        duckdb.sql(f"CREATE DATABASE md:{DB_NAME} AS local_db")
-
-        st.success("Uploaded to MotherDuck 🎉")
-        return duckdb.connect(f"md:{DB_NAME}", config={"motherduck_token": MD_TOKEN})
-
-# --- Main ---
-st.title("NYC Taxi Data - MotherDuck Demo")
-conn = setup_motherduck()
-
-# Example query
-df = conn.execute("SELECT * FROM chicago_taxi_2019 LIMIT 10").fetchdf()
-st.dataframe(df)
-
-
-
-# -----------------------------
 # Streamlit Page Config
 # -----------------------------
 st.set_page_config(page_title="Chicago & NYC Transportation Dashboard", layout="wide")
-st.markdown(
-    """
+
+# -----------------------------
+# MotherDuck Connection
+# -----------------------------
+MD_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imthc2hlZW5hcGVyc29uYWxAZ21haWwuY29tIiwic2Vzc2lvbiI6Imthc2hlZW5hcGVyc29uYWwuZ21haWwuY29tIiwicGF0IjoiUEk4WnZwcC1zNEFDZFYtRWYxaEtoX0k2aFZoZmhDTTJQRTRGY2Y5UVJQWSIsInVzZXJJZCI6Ijk4MWZiMjYzLTQ1NzEtNDk2OS04NWNkLWM0ZjA3MGE0ZTg4YSIsImlzcyI6Im1kX3BhdCIsInJlYWRPbmx5IjpmYWxzZSwidG9rZW5UeXBlIjoicmVhZF93cml0ZSIsImlhdCI6MTc1NTE3ODI4Mn0.bjWdIVWu-3suCbmyRu0UEr-jSu8kPmfpYrZ5xPH_-xo"  # replace with your actual token
+DB_NAME = "taxi_assign"       # name of your MotherDuck DB
+
+@st.cache_resource
+def connect_motherduck():
+    duckdb.sql("INSTALL motherduck;")
+    duckdb.sql("LOAD motherduck;")
+    duckdb.sql(f"SET motherduck_token='{MD_TOKEN}'")
+    duckdb.sql(f"ATTACH 'md:{DB_NAME}' AS motherduck_db;")
+    return duckdb.connect()  # returns connection with attached db
+
+conn = connect_motherduck()
+
+# -----------------------------
+# Styling
+# -----------------------------
+st.markdown("""
     <style>
         body {
             background-color: black;
@@ -111,17 +41,15 @@ st.markdown(
             background-color: black;
         }
     </style>
-    """,
-    unsafe_allow_html=True
-)
+""", unsafe_allow_html=True)
 
-st.title("🚖 Chicago & NYC Transportation Analysis (Black & White)")
+st.title("🚖 Chicago & NYC Transportation Analysis (MotherDuck)")
 
 # -----------------------------
-# Data Loading Functions
+# Helper to Load Table
 # -----------------------------
 def load_table(table_name):
-    query = f"SELECT * FROM {table_name} LIMIT 5000"  # limit to avoid heavy load
+    query = f"SELECT * FROM motherduck_db.{table_name} LIMIT 5000"
     return conn.execute(query).fetchdf()
 
 # -----------------------------
@@ -143,9 +71,7 @@ with tab1:
     ).properties(width=700, height=400).configure_axis(
         labelColor='white',
         titleColor='white'
-    ).configure_view(
-        strokeWidth=0
-    )
+    ).configure_view(strokeWidth=0)
 
     st.altair_chart(hourly_chart)
 
