@@ -107,11 +107,8 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-colL, colR = st.columns([0.75, 0.25])
-with colL:
-    years = st.multiselect("Year(s)", [2019, 2023], default=[2019, 2023], help="Select the years for comparison.")
-with colR:
-    agg_level = st.selectbox("Time aggregation", ["Hourly", "Daily", "Weekly", "Monthly"], index=3, help="Choose a time aggregation level for charts.")
+years = st.multiselect("Year(s)", [2019, 2023], default=[2019, 2023], help="Select the years for comparison.")
+
 
 # -----------------------------
 # KPIs (all computed from your schemas only)
@@ -247,41 +244,68 @@ with tab_nyc:
     We'll examine recovery trends, changes in payment methods, and shifts in market share among taxi technology providers.
     """)
 
-    # NYC monthly counts (parse timestamps from VARCHAR)
+    # NYC monthly counts (using the user-provided query structure)
     sql_nyc_monthly = f"""
-    WITH base AS (
+    WITH y19 AS (
       SELECT
         2019 AS year,
-        DATE_TRUNC('month', CAST(tpep_pickup_datetime AS TIMESTAMP)) AS month,
-        1 AS cnt
+        EXTRACT(MONTH FROM CAST(tpep_pickup_datetime AS TIMESTAMP)) AS month,
+        COUNT(*) AS trip_count,
+        AVG(trip_distance) AS avg_distance,
+        AVG(total_amount) AS avg_revenue,
+        SUM(total_amount) AS total_revenue
       FROM {DB_ALIAS}.main.yellow_taxi_2019_1
-      UNION ALL
+      WHERE trip_distance > 0 AND total_amount > 0
+      GROUP BY 1, 2
+    ),
+    y23 AS (
       SELECT
         2023 AS year,
-        DATE_TRUNC('month', CAST(tpep_pickup_datetime AS TIMESTAMP)) AS month,
-        1 AS cnt
+        EXTRACT(MONTH FROM CAST(tpep_pickup_datetime AS TIMESTAMP)) AS month,
+        COUNT(*) AS trip_count,
+        AVG(trip_distance) AS avg_distance,
+        AVG(total_amount) AS avg_revenue,
+        SUM(total_amount) AS total_revenue
       FROM {DB_ALIAS}.main.yellow_taxi_2023
+      WHERE trip_distance > 0 AND total_amount > 0
+      GROUP BY 1, 2
     )
-    SELECT year, month, SUM(cnt) AS trips
-    FROM base
-    WHERE year IN ({",".join([str(y) for y in years])})
-    GROUP BY 1,2
-    ORDER BY 2,1;
+    SELECT * FROM y19 UNION ALL SELECT * FROM y23 ORDER BY year, month;
     """
     nyc_monthly = qdf(sql_nyc_monthly)
     st.subheader("NYC — Monthly Taxi Trips (2019 vs 2023)")
     if not nyc_monthly.empty:
-        c = alt.Chart(nyc_monthly).mark_line(point=True).encode(
-            x=alt.X('month:T', title='Month'),
-            y=alt.Y('trips:Q', title='Trips'),
+        c = alt.Chart(nyc_monthly).mark_bar().encode(
+            x=alt.X('month:O', title='Month', axis=alt.Axis(format=".0f")),
+            y=alt.Y('trip_count:Q', title='Trip Count'),
             color=alt.Color('year:N', scale=alt.Scale(range=['#FF7A00', '#0A84FF'])),
-            tooltip=['year', alt.Tooltip('month:T'), 'trips:Q']
+            column=alt.Column('year:N', header=alt.Header(labelColor='#e6eef9', title='Year')),
+            tooltip=['year', 'month', 'trip_count']
         ).properties(height=320).configure_axis(
             labelColor='#e6eef9', titleColor='#e6eef9'
         ).configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
         st.altair_chart(c, use_container_width=True)
     else:
         st.info("No NYC data for selected year(s).")
+    
+    # Additional charts for NYC monthly metrics
+    st.subheader("NYC — Average Trip Distance & Revenue by Month")
+    if not nyc_monthly.empty:
+        c1 = alt.Chart(nyc_monthly).mark_line(point=True).encode(
+            x=alt.X('month:O', title='Month', axis=alt.Axis(format=".0f")),
+            y=alt.Y('avg_distance:Q', title='Avg Distance'),
+            color=alt.Color('year:N', scale=alt.Scale(range=['#FF7A00', '#0A84FF'])),
+            tooltip=['year', 'month', alt.Tooltip('avg_distance:Q', format=".2f")]
+        ).properties(height=200).configure_axis(labelColor='#e6eef9', titleColor='#e6eef9').configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
+        st.altair_chart(c1, use_container_width=True)
+        
+        c2 = alt.Chart(nyc_monthly).mark_line(point=True).encode(
+            x=alt.X('month:O', title='Month', axis=alt.Axis(format=".0f")),
+            y=alt.Y('avg_revenue:Q', title='Avg Revenue ($)'),
+            color=alt.Color('year:N', scale=alt.Scale(range=['#FF7A00', '#0A84FF'])),
+            tooltip=['year', 'month', alt.Tooltip('avg_revenue:Q', format=".2f")]
+        ).properties(height=200).configure_axis(labelColor='#e6eef9', titleColor='#e6eef9').configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
+        st.altair_chart(c2, use_container_width=True)
 
     # NYC hourly (cast pickup)
     sql_nyc_hour = f"""
@@ -422,35 +446,68 @@ with tab_chi:
     We'll examine monthly and hourly demand patterns and analyze average fare amounts to understand changes in trip value.
     """)
 
-    # Chicago monthly counts
+    # Chicago monthly counts and metrics
     sql_chi_monthly = f"""
-    WITH base AS (
-      SELECT 2019 AS year, DATE_TRUNC('month', trip_start_timestamp) AS month, 1 AS cnt
+    WITH y19 AS (
+      SELECT
+        2019 AS year,
+        EXTRACT(MONTH FROM trip_start_timestamp) AS month,
+        COUNT(*) AS trip_count,
+        AVG(trip_miles) AS avg_distance,
+        AVG(trip_total) AS avg_revenue,
+        SUM(trip_total) AS total_revenue
       FROM {DB_ALIAS}.main.chicago_taxi_2019
-      UNION ALL
-      SELECT 2023 AS year, DATE_TRUNC('month', trip_start_timestamp) AS month, 1 AS cnt
+      WHERE trip_miles > 0 AND trip_total > 0
+      GROUP BY 1, 2
+    ),
+    y23 AS (
+      SELECT
+        2023 AS year,
+        EXTRACT(MONTH FROM trip_start_timestamp) AS month,
+        COUNT(*) AS trip_count,
+        AVG(trip_miles) AS avg_distance,
+        AVG(trip_total) AS avg_revenue,
+        SUM(trip_total) AS total_revenue
       FROM {DB_ALIAS}.main.chicago_taxi_2023
+      WHERE trip_miles > 0 AND trip_total > 0
+      GROUP BY 1, 2
     )
-    SELECT year, month, SUM(cnt) AS trips
-    FROM base
-    WHERE year IN ({",".join([str(y) for y in years])})
-    GROUP BY 1,2
-    ORDER BY 2,1;
+    SELECT * FROM y19 UNION ALL SELECT * FROM y23 ORDER BY year, month;
     """
     chi_monthly = qdf(sql_chi_monthly)
     st.subheader("Chicago — Monthly Taxi Trips (2019 vs 2023)")
     if not chi_monthly.empty:
-        c = alt.Chart(chi_monthly).mark_line(point=True).encode(
-            x=alt.X('month:T', title='Month'),
-            y=alt.Y('trips:Q', title='Trips'),
+        c = alt.Chart(chi_monthly).mark_bar().encode(
+            x=alt.X('month:O', title='Month', axis=alt.Axis(format=".0f")),
+            y=alt.Y('trip_count:Q', title='Trip Count'),
             color=alt.Color('year:N', scale=alt.Scale(range=['#FF7A00', '#0A84FF'])),
-            tooltip=['year', alt.Tooltip('month:T'), 'trips:Q']
+            column=alt.Column('year:N', header=alt.Header(labelColor='#e6eef9', title='Year')),
+            tooltip=['year', 'month', 'trip_count']
         ).properties(height=320).configure_axis(
             labelColor='#e6eef9', titleColor='#e6eef9'
         ).configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
         st.altair_chart(c, use_container_width=True)
     else:
         st.info("No Chicago data for selected year(s).")
+    
+    # Additional charts for Chicago monthly metrics
+    st.subheader("Chicago — Average Trip Distance & Revenue by Month")
+    if not chi_monthly.empty:
+        c1 = alt.Chart(chi_monthly).mark_line(point=True).encode(
+            x=alt.X('month:O', title='Month', axis=alt.Axis(format=".0f")),
+            y=alt.Y('avg_distance:Q', title='Avg Distance'),
+            color=alt.Color('year:N', scale=alt.Scale(range=['#FF7A00', '#0A84FF'])),
+            tooltip=['year', 'month', alt.Tooltip('avg_distance:Q', format=".2f")]
+        ).properties(height=200).configure_axis(labelColor='#e6eef9', titleColor='#e6eef9').configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
+        st.altair_chart(c1, use_container_width=True)
+
+        c2 = alt.Chart(chi_monthly).mark_line(point=True).encode(
+            x=alt.X('month:O', title='Month', axis=alt.Axis(format=".0f")),
+            y=alt.Y('avg_revenue:Q', title='Avg Revenue ($)'),
+            color=alt.Color('year:N', scale=alt.Scale(range=['#FF7A00', '#0A84FF'])),
+            tooltip=['year', 'month', alt.Tooltip('avg_revenue:Q', format=".2f")]
+        ).properties(height=200).configure_axis(labelColor='#e6eef9', titleColor='#e6eef9').configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
+        st.altair_chart(c2, use_container_width=True)
 
     # Chicago hourly
     sql_chi_hour = f"""
@@ -482,36 +539,6 @@ with tab_chi:
         st.altair_chart(c, use_container_width=True)
     else:
         st.info("No Chicago hourly data.")
-
-    # Chicago Average Trip Total by Month
-    sql_chi_fare = f"""
-    WITH base AS (
-        SELECT 2019 AS year, DATE_TRUNC('month', trip_start_timestamp) AS month, trip_total AS fare
-        FROM {DB_ALIAS}.main.chicago_taxi_2019
-        UNION ALL
-        SELECT 2023 AS year, DATE_TRUNC('month', trip_start_timestamp) AS month, trip_total AS fare
-        FROM {DB_ALIAS}.main.chicago_taxi_2023
-    )
-    SELECT year, month, AVG(fare) AS avg_fare
-    FROM base
-    WHERE year IN ({",".join([str(y) for y in years])})
-    GROUP BY 1,2
-    ORDER BY 2,1;
-    """
-    chi_fare = qdf(sql_chi_fare)
-    st.subheader("Chicago — Average Trip Total by Month")
-    if not chi_fare.empty:
-        c = alt.Chart(chi_fare).mark_line(point=True).encode(
-            x=alt.X('month:T', title='Month'),
-            y=alt.Y('avg_fare:Q', title='Average Fare ($)'),
-            color=alt.Color('year:N', scale=alt.Scale(range=['#FF7A00', '#0A84FF'])),
-            tooltip=['year', alt.Tooltip('month:T'), 'avg_fare:Q']
-        ).properties(height=320).configure_axis(
-            labelColor='#e6eef9', titleColor='#e6eef9'
-        ).configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
-        st.altair_chart(c, use_container_width=True)
-    else:
-        st.info("No Chicago fare data for selected year(s).")
 
 
 with tab_traffic:
@@ -626,11 +653,12 @@ with tab_comp:
     with lcol:
         st.subheader("NYC Monthly Recovery")
         if not nyc_monthly.empty:
-            c = alt.Chart(nyc_monthly).mark_line(point=True).encode(
-                x=alt.X('month:T', title='Month'),
-                y=alt.Y('trips:Q', title='Trips'),
+            c = alt.Chart(nyc_monthly).mark_bar().encode(
+                x=alt.X('month:O', title='Month', axis=alt.Axis(format=".0f")),
+                y=alt.Y('trip_count:Q', title='Trip Count'),
                 color=alt.Color('year:N', scale=alt.Scale(range=['#FF7A00', '#0A84FF'])),
-                tooltip=['year', alt.Tooltip('month:T'), 'trips:Q']
+                column=alt.Column('year:N', header=alt.Header(labelColor='#e6eef9', title='Year')),
+                tooltip=['year', 'month', 'trip_count']
             ).properties(height=320).configure_axis(
                 labelColor='#e6eef9', titleColor='#e6eef9'
             ).configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
@@ -640,11 +668,12 @@ with tab_comp:
     with rcol:
         st.subheader("Chicago Monthly Recovery")
         if not chi_monthly.empty:
-            c = alt.Chart(chi_monthly).mark_line(point=True).encode(
-                x=alt.X('month:T', title='Month'),
-                y=alt.Y('trips:Q', title='Trips'),
+            c = alt.Chart(chi_monthly).mark_bar().encode(
+                x=alt.X('month:O', title='Month', axis=alt.Axis(format=".0f")),
+                y=alt.Y('trip_count:Q', title='Trip Count'),
                 color=alt.Color('year:N', scale=alt.Scale(range=['#FF7A00', '#0A84FF'])),
-                tooltip=['year', alt.Tooltip('month:T'), 'trips:Q']
+                column=alt.Column('year:N', header=alt.Header(labelColor='#e6eef9', title='Year')),
+                tooltip=['year', 'month', 'trip_count']
             ).properties(height=320).configure_axis(
                 labelColor='#e6eef9', titleColor='#e6eef9'
             ).configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
