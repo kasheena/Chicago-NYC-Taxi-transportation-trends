@@ -321,7 +321,7 @@ with col_pay:
             tooltip=['year', 'payment_type_desc', 'trips']
         ).properties(height=320).configure_axis(
             labelColor='#e6eef9', titleColor='#e6eef9'
-        ).configure_legend(labelColor='#e6eef9', titleColor='#e6eef9', title="Year")
+        ).configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
         st.altair_chart(c, use_container_width=True)
     else:
         st.info("No NYC payment data for selected year(s).")
@@ -336,7 +336,7 @@ with col_vendor:
             tooltip=['year', 'vendor_name', 'trips']
         ).properties(height=320).configure_axis(
             labelColor='#e6eef9', titleColor='#e6eef9'
-        ).configure_legend(labelColor='#e6eef9', titleColor='#e6eef9', title="Year")
+        ).configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
         st.altair_chart(c, use_container_width=True)
     else:
         st.info("No NYC vendor data for selected year(s).")
