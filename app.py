@@ -153,7 +153,7 @@ FROM y19, y23;
 chi_kpi = qdf(sql_chi_kpi).iloc[0]
 
 # CTA total rides (all-time in table; you can later filter by date widgets if needed)
-sql_cta = f"SELECT SUM(rides)::BIGINT AS total_rides FROM {DB_ALIAS}.main.\"CTA - L Stations Daily Entries\";"
+sql_cta = f"SELECT SUM(rides)::BIGINT AS total_rides FROM {DB_ALIAS}.main.cta_l_ridership;"
 cta_total = qdf(sql_cta).iloc[0]["total_rides"]
 
 # Traffic: Chicago average speed by year (for quick context)
@@ -412,14 +412,14 @@ top_n = st.slider("Top N stations", 3, 20, 8, 1)
 sql_cta_topstations = f"""
 WITH agg AS (
   SELECT stationname, SUM(rides) AS total_rides
-  FROM {DB_ALIAS}.main."CTA - L Stations Daily Entries"
+  FROM {DB_ALIAS}.main.cta_l_ridership
   GROUP BY 1
 ),
 top AS (
   SELECT stationname FROM agg ORDER BY total_rides DESC LIMIT {top_n}
 )
 SELECT t.stationname, date::DATE AS date, rides
-FROM {DB_ALIAS}.main."CTA - L Stations Daily Entries" t
+FROM {DB_ALIAS}.main.cta_l_ridership t
 JOIN top USING (stationname)
 ORDER BY stationname, date;
 """
