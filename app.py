@@ -403,7 +403,7 @@ top_n = st.slider("Top N stations", 3, 20, 8, 1)
 sql_cta_topstations = f"""
 WITH agg AS (
   SELECT stationname, SUM(rides) AS total_rides
-  FROM {DB_ALIAS}."CTA - L Stations Daily Entries"
+  FROM {DB_ALIAS}.main."CTA - L Stations Daily Entries"
   GROUP BY 1
 ),
 top AS (
