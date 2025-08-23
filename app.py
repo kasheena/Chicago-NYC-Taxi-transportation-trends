@@ -118,7 +118,9 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-years = st.multiselect("Year(s)", [2019, 2023], default=[2019, 2023], help="Select the years for comparison.")
+# Removed the years multiselect filter as requested by the user
+# years = st.multiselect("Year(s)", [2019, 2023], default=[2019, 2023], help="Select the years for comparison.")
+years = [2019, 2023]
 
 
 # -----------------------------
