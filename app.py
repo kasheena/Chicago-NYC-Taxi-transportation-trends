@@ -78,6 +78,7 @@ MD_DB_NAME = "taxi_assign"
 # NOTE: The user's provided token is removed for security and a placeholder is used.
 # If you run this code, you will need to replace this with your own valid token.
 MD_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imthc2hlZW5hcGVyc29uYWxAZ21haWwuY29tIiwic2Vzc2lvbiI6Imthc2hlZW5hcGVyc29uYWwuZ21haWwuY29tIiwicGF0IjoiUEk4WnZwcC1zNEFDZFYtRWYxaEtoX0k2aFZoZmhDTTJQRTRGY2Y5UVJQWSIsInVzZXJJZCI6Ijk4MWZiMjYzLTQ1NzEtNDk2OS04NWNkLWM0ZjA3MGE0ZTg4YSIsImlzcyI6Im1kX3BhdCIsInJlYWRPbmx5IjpmYWxzZSwidG9rZW5UeXBlIjoicmVhZF93cml0ZSIsImlhdCI6MTc1NTE3ODI4Mn0.bjWdIVWu-3suCbmyRu0UEr-jSu8kPmfpYrZ5xPH_-xo" 
+
 if not MD_TOKEN or MD_TOKEN == "your_motherduck_token_here":
     st.error("MotherDuck token not found. Add MOTHERDUCK_TOKEN to your Streamlit secrets or environment.")
     st.stop()
@@ -347,6 +348,9 @@ with tab_nyc:
         st.altair_chart(c, use_container_width=True)
     else:
         st.info("No NYC data for selected year(s).")
+    st.markdown("""
+    **Purpose:** Compares monthly taxi trip volumes. **Relevance:** Shows demand recovery and seasonal patterns post-COVID, helping to evaluate subsidy effectiveness over time.
+    """)
 
     # Additional charts for NYC monthly metrics
     st.subheader("NYC — Average Trip Distance & Revenue by Month")
@@ -366,6 +370,9 @@ with tab_nyc:
             tooltip=['year', 'month', alt.Tooltip('avg_revenue:Q', format=".2f")]
         ).properties(height=200).configure_axis(labelColor='#e6eef9', titleColor='#e6eef9').configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
         st.altair_chart(c2, use_container_width=True)
+    st.markdown("""
+    **Purpose:** Analyzes trip value and length trends. **Relevance:** Reveals changes in travel behavior and economic impact on drivers, informing fare policy adjustments.
+    """)
 
     # NYC hourly (cast pickup)
     sql_nyc_hour = f"""
@@ -397,6 +404,9 @@ with tab_nyc:
         st.altair_chart(c, use_container_width=True)
     else:
         st.info("No NYC hourly data.")
+    st.markdown("""
+    **Purpose:** Identifies peak travel hours for each year. **Relevance:** Helps optimize driver supply and informs policies for managing rush hour congestion effectively.
+    """)
 
     # Payment Type breakdown
     sql_nyc_payment_type = f"""
@@ -485,6 +495,9 @@ with tab_nyc:
             st.altair_chart(c, use_container_width=True)
         else:
             st.info("No NYC payment data for selected year(s).")
+        st.markdown("""
+        **Purpose:** Tracks shifts in payment methods. **Relevance:** Highlights the trend towards digital payments, guiding infrastructure and app development for seamless transactions.
+        """)
     with col_vendor:
         st.subheader("NYC Vendor Market Share")
         if not nyc_vendor_df.empty:
@@ -499,6 +512,46 @@ with tab_nyc:
             st.altair_chart(c, use_container_width=True)
         else:
             st.info("No NYC vendor data for selected year(s).")
+        st.markdown("""
+        **Purpose:** Gauges vendor market share changes. **Relevance:** Reveals which companies are dominating the market, useful for competitive analysis and regulation.
+        """)
+
+    st.markdown("---")
+    st.subheader("NYC — Trip Fare vs. Distance (Sample)")
+    # New query for NYC fare vs distance scatter plot
+    sql_nyc_scatter = f"""
+    SELECT
+        2019 AS year,
+        trip_distance AS distance,
+        fare_amount AS fare
+    FROM {DB_ALIAS}.main.yellow_taxi_2019_1
+    WHERE trip_distance > 0 AND fare_amount > 0 AND fare_amount < 100
+    USING SAMPLE 10000 ROWS
+    UNION ALL
+    SELECT
+        2023 AS year,
+        trip_distance AS distance,
+        fare_amount AS fare
+    FROM {DB_ALIAS}.main.yellow_taxi_2023
+    WHERE trip_distance > 0 AND fare_amount > 0 AND fare_amount < 100
+    USING SAMPLE 10000 ROWS;
+    """
+    nyc_scatter_df = qdf(sql_nyc_scatter)
+
+    if not nyc_scatter_df.empty:
+        c = alt.Chart(nyc_scatter_df).mark_point(filled=True, opacity=0.4).encode(
+            x=alt.X('distance', title='Trip Distance (miles)', scale=alt.Scale(domain=(0, 20))),
+            y=alt.Y('fare', title='Fare Amount ($)', scale=alt.Scale(domain=(0, 60))),
+            color=alt.Color('year:N', scale=alt.Scale(range=['#FF7A00', '#0A84FF'])),
+            tooltip=['year', 'distance', 'fare']
+        ).properties(height=400).configure_axis(labelColor='#e6eef9', titleColor='#e6eef9') \
+         .configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
+        st.altair_chart(c, use_container_width=True)
+    else:
+        st.info("No data to plot trip fare vs. distance.")
+    st.markdown("""
+    **Purpose:** Examines pricing consistency across trip distances. **Relevance:** Reveals if fare structures are stable, useful for ensuring fairness in pricing and stable driver income.
+    """)
     
     st.subheader("NYC — Average Tip Percentage by Payment Type")
     # New query for NYC average tip percentage
@@ -551,6 +604,9 @@ with tab_nyc:
         st.altair_chart(c, use_container_width=True)
     else:
         st.info("No data to plot tipping trends.")
+    st.markdown("""
+    **Purpose:** Analyzes tipping trends by payment type. **Relevance:** Provides insights into rider behavior and driver compensation, informing financial support policies for drivers.
+    """)
 
 
 with tab_chi:
@@ -602,6 +658,9 @@ with tab_chi:
         st.altair_chart(c, use_container_width=True)
     else:
         st.info("No Chicago data for selected year(s).")
+    st.markdown("""
+    **Purpose:** Compares monthly taxi trip volumes. **Relevance:** Shows demand recovery and seasonal patterns post-COVID, helping to evaluate subsidy effectiveness over time.
+    """)
 
     # Additional charts for Chicago monthly metrics
     st.subheader("Chicago — Average Trip Distance & Revenue by Month")
@@ -621,6 +680,9 @@ with tab_chi:
             tooltip=['year', 'month', alt.Tooltip('avg_revenue:Q', format=".2f")]
         ).properties(height=200).configure_axis(labelColor='#e6eef9', titleColor='#e6eef9').configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
         st.altair_chart(c2, use_container_width=True)
+    st.markdown("""
+    **Purpose:** Analyzes trip value and length trends. **Relevance:** Reveals changes in travel behavior and economic impact on drivers, informing fare policy adjustments.
+    """)
 
     # Chicago hourly
     sql_chi_hour = f"""
@@ -652,6 +714,9 @@ with tab_chi:
         st.altair_chart(c, use_container_width=True)
     else:
         st.info("No Chicago hourly data.")
+    st.markdown("""
+    **Purpose:** Identifies peak travel hours for each year. **Relevance:** Helps optimize driver supply and informs policies for managing rush hour congestion effectively.
+    """)
     
     st.markdown("---")
     st.subheader("Chicago — Trip Density by Hour & Day of Week")
@@ -716,6 +781,9 @@ with tab_chi:
         st.altair_chart(c, use_container_width=True)
     else:
         st.info("No data to plot trip density heatmap.")
+    st.markdown("""
+    **Purpose:** Pinpoints time-of-day and day-of-week demand hotspots. **Relevance:** Crucial for optimizing fleet distribution and predicting service needs at a granular level.
+    """)
 
 
 with tab_traffic:
@@ -749,6 +817,9 @@ with tab_traffic:
         st.altair_chart(c, use_container_width=True)
     else:
         st.info("No traffic data for selected year(s).")
+    st.markdown("""
+    **Purpose:** Measures traffic congestion over time. **Relevance:** Indicates if post-COVID travel patterns have worsened or eased congestion, informing infrastructure decisions.
+    """)
 
     # Chicago Traffic — Avg Speed by Day of Week
     sql_chi_speed_day = f"""
@@ -787,6 +858,9 @@ with tab_traffic:
         st.altair_chart(c, use_container_width=True)
     else:
         st.info("No traffic data for selected year(s).")
+    st.markdown("""
+    **Purpose:** Analyzes traffic speed by day of the week. **Relevance:** Identifies weekly congestion trends, guiding dynamic traffic management and public transit planning.
+    """)
 
 
     st.markdown("<hr/>", unsafe_allow_html=True)
@@ -818,6 +892,9 @@ with tab_traffic:
         st.altair_chart(c, use_container_width=True)
     else:
         st.info("CTA rides not available.")
+    st.markdown("""
+    **Purpose:** Tracks ridership at key stations. **Relevance:** Helps identify high-traffic stations for resource allocation, safety, and potential infrastructure upgrades.
+    """)
 
 
 with tab_comp:
@@ -884,6 +961,9 @@ with tab_comp:
         st.altair_chart(c, use_container_width=True)
     else:
         st.info("No data available for comparison.")
+    st.markdown("""
+    **Purpose:** Compares recovery rates of NYC and Chicago. **Relevance:** Provides a high-level view of which city is recovering faster, useful for cross-city policy evaluation.
+    """)
 
 
     st.subheader("Pickup Density — Busiest Locations")
@@ -914,6 +994,9 @@ with tab_comp:
             st.altair_chart(c, use_container_width=True)
         else:
             st.info("No NYC pickup data available for 2023.")
+        st.markdown("""
+        **Purpose:** Pinpoints top pickup locations. **Relevance:** Guides infrastructure decisions for creating dedicated pickup zones, reducing street congestion and improving efficiency.
+        """)
     with comp_2:
         st.markdown("**Chicago — Top Pickup Locations (2023)**")
         sql_chi_pts_2023 = f"""
@@ -932,6 +1015,9 @@ with tab_comp:
             st.map(chi_pts_2023.rename(columns={"lat": "latitude", "lon": "longitude"}))
         else:
             st.info("No Chicago pickup coordinates available for 2023.")
+        st.markdown("""
+        **Purpose:** Pinpoints top pickup locations. **Relevance:** Guides infrastructure decisions for creating dedicated pickup zones, reducing street congestion and improving efficiency.
+        """)
 
     st.markdown("<hr/>", unsafe_allow_html=True)
     comp_3, comp_4 = st.columns(2)
@@ -961,6 +1047,9 @@ with tab_comp:
             st.altair_chart(c, use_container_width=True)
         else:
             st.info("No NYC pickup data available for 2019.")
+        st.markdown("""
+        **Purpose:** Pinpoints top pickup locations. **Relevance:** Guides infrastructure decisions for creating dedicated pickup zones, reducing street congestion and improving efficiency.
+        """)
     with comp_4:
         st.markdown("**Chicago — Top Pickup Locations (2019)**")
         sql_chi_pts_2019 = f"""
@@ -979,6 +1068,9 @@ with tab_comp:
             st.map(chi_pts_2019.rename(columns={"lat": "latitude", "lon": "longitude"}))
         else:
             st.info("No Chicago pickup coordinates available for 2019.")
+        st.markdown("""
+        **Purpose:** Pinpoints top pickup locations. **Relevance:** Guides infrastructure decisions for creating dedicated pickup zones, reducing street congestion and improving efficiency.
+        """)
 
 
 with tab_conc:
