@@ -77,9 +77,9 @@ MD_DB_NAME = "taxi_assign"
 
 # NOTE: The user's provided token is removed for security and a placeholder is used.
 # If you run this code, you will need to replace this with your own valid token.
-MD_TOKEN = "your_motherduck_token_here"
+MD_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imthc2hlZW5hcGVyc29uYWxAZ21haWwuY29tIiwic2Vzc2lvbiI6Imthc2hlZW5hcGVyc29uYWwuZ21haWwuY29tIiwicGF0IjoiUEk4WnZwcC1zNEFDZFYtRWYxaEtoX0k2aFZoZmhDTTJQRTRGY2Y5UVJQWSIsInVzZXJJZCI6Ijk4MWZiMjYzLTQ1NzEtNDk2OS04NWNkLWM0ZjA3MGE0ZTg4YSIsImlzcyI6Im1kX3BhdCIsInJlYWRPbmx5IjpmYWxzZSwidG9rZW5UeXBlIjoicmVhZF93cml0ZSIsImlhdCI6MTc1NTE3ODI4Mn0.bjWdIVWu-3suCbmyRu0UEr-jSu8kPmfpYrZ5xPH_-xo" 
 
-if not MD_TOKEN or MD_TOKEN == "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imthc2hlZW5hcGVyc29uYWxAZ21haWwuY29tIiwic2Vzc2lvbiI6Imthc2hlZW5hcGVyc29uYWwuZ21haWwuY29tIiwicGF0IjoiUEk4WnZwcC1zNEFDZFYtRWYxaEtoX0k2aFZoZmhDTTJQRTRGY2Y5UVJQWSIsInVzZXJJZCI6Ijk4MWZiMjYzLTQ1NzEtNDk2OS04NWNkLWM0ZjA3MGE0ZTg4YSIsImlzcyI6Im1kX3BhdCIsInJlYWRPbmx5IjpmYWxzZSwidG9rZW5UeXBlIjoicmVhZF93cml0ZSIsImlhdCI6MTc1NTE3ODI4Mn0.bjWdIVWu-3suCbmyRu0UEr-jSu8kPmfpYrZ5xPH_-xo":
+if not MD_TOKEN or MD_TOKEN == "your_motherduck_token_here":
     st.error("MotherDuck token not found. Add MOTHERDUCK_TOKEN to your Streamlit secrets or environment.")
     st.stop()
 
@@ -788,7 +788,14 @@ with tab_comp:
         """
         nyc_zones_2023 = qdf(sql_nyc_zones_2023)
         if not nyc_zones_2023.empty:
-            st.bar_chart(nyc_zones_2023.set_index("Zone")["trips"])
+            c = alt.Chart(nyc_zones_2023).mark_bar(color='#0A84FF').encode(
+                x=alt.X('trips:Q', title='Number of Trips'),
+                y=alt.Y('Zone:N', sort='-x', title='Pickup Zone'),
+                tooltip=['Zone', 'Borough', 'trips']
+            ).properties(height=320).configure_axis(
+                labelColor='#e6eef9', titleColor='#e6eef9'
+            )
+            st.altair_chart(c, use_container_width=True)
         else:
             st.info("No NYC pickup data available for 2023.")
     with comp_2:
@@ -828,7 +835,14 @@ with tab_comp:
         """
         nyc_zones_2019 = qdf(sql_nyc_zones_2019)
         if not nyc_zones_2019.empty:
-            st.bar_chart(nyc_zones_2019.set_index("Zone")["trips"])
+            c = alt.Chart(nyc_zones_2019).mark_bar(color='#FF7A00').encode(
+                x=alt.X('trips:Q', title='Number of Trips'),
+                y=alt.Y('Zone:N', sort='-x', title='Pickup Zone'),
+                tooltip=['Zone', 'Borough', 'trips']
+            ).properties(height=320).configure_axis(
+                labelColor='#e6eef9', titleColor='#e6eef9'
+            )
+            st.altair_chart(c, use_container_width=True)
         else:
             st.info("No NYC pickup data available for 2019.")
     with comp_4:
