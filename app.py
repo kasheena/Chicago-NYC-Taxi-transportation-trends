@@ -78,7 +78,6 @@ MD_DB_NAME = "taxi_assign"
 # NOTE: The user's provided token is removed for security and a placeholder is used.
 # If you run this code, you will need to replace this with your own valid token.
 MD_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imthc2hlZW5hcGVyc29uYWxAZ21haWwuY29tIiwic2Vzc2lvbiI6Imthc2hlZW5hcGVyc29uYWwuZ21haWwuY29tIiwicGF0IjoiUEk4WnZwcC1zNEFDZFYtRWYxaEtoX0k2aFZoZmhDTTJQRTRGY2Y5UVJQWSIsInVzZXJJZCI6Ijk4MWZiMjYzLTQ1NzEtNDk2OS04NWNkLWM0ZjA3MGE0ZTg4YSIsImlzcyI6Im1kX3BhdCIsInJlYWRPbmx5IjpmYWxzZSwidG9rZW5UeXBlIjoicmVhZF93cml0ZSIsImlhdCI6MTc1NTE3ODI4Mn0.bjWdIVWu-3suCbmyRu0UEr-jSu8kPmfpYrZ5xPH_-xo" 
-
 if not MD_TOKEN or MD_TOKEN == "your_motherduck_token_here":
     st.error("MotherDuck token not found. Add MOTHERDUCK_TOKEN to your Streamlit secrets or environment.")
     st.stop()
@@ -501,6 +500,93 @@ with tab_nyc:
         else:
             st.info("No NYC vendor data for selected year(s).")
 
+    st.markdown("---")
+    st.subheader("NYC — Trip Fare vs. Distance (Sample)")
+    # New query for NYC fare vs distance scatter plot
+    sql_nyc_scatter = f"""
+    SELECT
+        2019 AS year,
+        trip_distance AS distance,
+        fare_amount AS fare
+    FROM {DB_ALIAS}.main.yellow_taxi_2019_1
+    WHERE trip_distance > 0 AND fare_amount > 0 AND fare_amount < 100
+    USING SAMPLE 10000 ROWS
+    UNION ALL
+    SELECT
+        2023 AS year,
+        trip_distance AS distance,
+        fare_amount AS fare
+    FROM {DB_ALIAS}.main.yellow_taxi_2023
+    WHERE trip_distance > 0 AND fare_amount > 0 AND fare_amount < 100
+    USING SAMPLE 10000 ROWS;
+    """
+    nyc_scatter_df = qdf(sql_nyc_scatter)
+
+    if not nyc_scatter_df.empty:
+        c = alt.Chart(nyc_scatter_df).mark_point(filled=True, opacity=0.4).encode(
+            x=alt.X('distance', title='Trip Distance (miles)', scale=alt.Scale(domain=(0, 20))),
+            y=alt.Y('fare', title='Fare Amount ($)', scale=alt.Scale(domain=(0, 60))),
+            color=alt.Color('year:N', scale=alt.Scale(range=['#FF7A00', '#0A84FF'])),
+            tooltip=['year', 'distance', 'fare']
+        ).properties(height=400).configure_axis(labelColor='#e6eef9', titleColor='#e6eef9') \
+         .configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
+        st.altair_chart(c, use_container_width=True)
+    else:
+        st.info("No data to plot trip fare vs. distance.")
+    
+    st.subheader("NYC — Average Tip Percentage by Payment Type")
+    # New query for NYC average tip percentage
+    sql_nyc_tips = f"""
+    WITH tips AS (
+        SELECT
+            2019 AS year,
+            CASE payment_type
+                WHEN 1 THEN 'Credit Card'
+                WHEN 2 THEN 'Cash'
+                ELSE 'Other'
+            END AS payment_type_desc,
+            tip_amount,
+            total_amount
+        FROM {DB_ALIAS}.main.yellow_taxi_2019_1
+        WHERE payment_type IN (1, 2) AND tip_amount > 0 AND total_amount > 0
+        UNION ALL
+        SELECT
+            2023 AS year,
+            CASE payment_type
+                WHEN 1 THEN 'Credit Card'
+                WHEN 2 THEN 'Cash'
+                ELSE 'Other'
+            END AS payment_type_desc,
+            tip_amount,
+            total_amount
+        FROM {DB_ALIAS}.main.yellow_taxi_2023
+        WHERE payment_type IN (1, 2) AND tip_amount > 0 AND total_amount > 0
+    )
+    SELECT
+        year,
+        payment_type_desc,
+        AVG(tip_amount / total_amount) * 100 AS avg_tip_pct
+    FROM tips
+    GROUP BY year, payment_type_desc
+    ORDER BY year, avg_tip_pct DESC;
+    """
+    nyc_tips_df = qdf(sql_nyc_tips)
+
+    if not nyc_tips_df.empty:
+        c = alt.Chart(nyc_tips_df).mark_bar().encode(
+            x=alt.X('payment_type_desc:N', title='Payment Type'),
+            y=alt.Y('avg_tip_pct:Q', title='Average Tip Percentage (%)', axis=alt.Axis(format=".1f")),
+            color=alt.Color('year:N', scale=alt.Scale(range=['#FF7A00', '#0A84FF'])),
+            column=alt.Column('year:N', header=alt.Header(labelColor='#e6eef9', title='Year')),
+            tooltip=['year', 'payment_type_desc', alt.Tooltip('avg_tip_pct:Q', format=".1f")]
+        ).properties(height=320).configure_axis(
+            labelColor='#e6eef9', titleColor='#e6eef9'
+        ).configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
+        st.altair_chart(c, use_container_width=True)
+    else:
+        st.info("No data to plot tipping trends.")
+
+
 with tab_chi:
     st.markdown("""
     This section focuses on **Chicago taxi trip data** from 2019 and 2023 to evaluate the local taxi industry's recovery.
@@ -600,6 +686,70 @@ with tab_chi:
         st.altair_chart(c, use_container_width=True)
     else:
         st.info("No Chicago hourly data.")
+    
+    st.markdown("---")
+    st.subheader("Chicago — Trip Density by Hour & Day of Week")
+    # New query for Chicago trip density heatmap
+    sql_chi_heatmap = f"""
+    WITH data AS (
+        SELECT
+            EXTRACT(YEAR FROM trip_start_timestamp) AS year,
+            EXTRACT(HOUR FROM trip_start_timestamp) AS hour,
+            CASE EXTRACT(DOW FROM trip_start_timestamp)
+                WHEN 0 THEN 'Sun'
+                WHEN 1 THEN 'Mon'
+                WHEN 2 THEN 'Tue'
+                WHEN 3 THEN 'Wed'
+                WHEN 4 THEN 'Thu'
+                WHEN 5 THEN 'Fri'
+                WHEN 6 THEN 'Sat'
+            END AS day_of_week
+        FROM {DB_ALIAS}.main.chicago_taxi_2019
+        UNION ALL
+        SELECT
+            EXTRACT(YEAR FROM trip_start_timestamp) AS year,
+            EXTRACT(HOUR FROM trip_start_timestamp) AS hour,
+            CASE EXTRACT(DOW FROM trip_start_timestamp)
+                WHEN 0 THEN 'Sun'
+                WHEN 1 THEN 'Mon'
+                WHEN 2 THEN 'Tue'
+                WHEN 3 THEN 'Wed'
+                WHEN 4 THEN 'Thu'
+                WHEN 5 THEN 'Fri'
+                WHEN 6 THEN 'Sat'
+            END AS day_of_week
+        FROM {DB_ALIAS}.main.chicago_taxi_2023
+    )
+    SELECT
+        year,
+        hour,
+        day_of_week,
+        COUNT(*) AS trips
+    FROM data
+    WHERE year IN ({",".join([str(y) for y in years])})
+    GROUP BY 1, 2, 3
+    ORDER BY year, hour;
+    """
+    chi_heatmap_df = qdf(sql_chi_heatmap)
+
+    if not chi_heatmap_df.empty:
+        c = alt.Chart(chi_heatmap_df).mark_rect().encode(
+            x=alt.X('day_of_week:O', title='Day of Week', sort=['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']),
+            y=alt.Y('hour:O', title='Hour (0-23)'),
+            color=alt.Color('trips:Q', title='Trip Count', scale=alt.Scale(scheme='turbo')),
+            column=alt.Column('year:N', header=alt.Header(labelColor='#e6eef9', title='Year')),
+            tooltip=['year', 'day_of_week', 'hour', alt.Tooltip('trips:Q', format=",")]
+        ).properties(height=400).configure_axis(
+            labelColor='#e6eef9', titleColor='#e6eef9'
+        ).configure_legend(
+            labelColor='#e6eef9', titleColor='#e6eef9',
+            gradientDirection='horizontal',
+            orient='bottom',
+            titleOrient='left'
+        )
+        st.altair_chart(c, use_container_width=True)
+    else:
+        st.info("No data to plot trip density heatmap.")
 
 
 with tab_traffic:
