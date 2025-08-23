@@ -515,43 +515,6 @@ with tab_nyc:
         st.markdown("""
         **Purpose:** Gauges vendor market share changes. **Relevance:** Reveals which companies are dominating the market, useful for competitive analysis and regulation.
         """)
-
-    st.markdown("---")
-    st.subheader("NYC — Trip Fare vs. Distance (Sample)")
-    # New query for NYC fare vs distance scatter plot
-    sql_nyc_scatter = f"""
-    SELECT
-        2019 AS year,
-        trip_distance AS distance,
-        fare_amount AS fare
-    FROM {DB_ALIAS}.main.yellow_taxi_2019_1
-    WHERE trip_distance > 0 AND fare_amount > 0 AND fare_amount < 100
-    USING SAMPLE 10000 ROWS
-    UNION ALL
-    SELECT
-        2023 AS year,
-        trip_distance AS distance,
-        fare_amount AS fare
-    FROM {DB_ALIAS}.main.yellow_taxi_2023
-    WHERE trip_distance > 0 AND fare_amount > 0 AND fare_amount < 100
-    USING SAMPLE 10000 ROWS;
-    """
-    nyc_scatter_df = qdf(sql_nyc_scatter)
-
-    if not nyc_scatter_df.empty:
-        c = alt.Chart(nyc_scatter_df).mark_point(filled=True, opacity=0.4).encode(
-            x=alt.X('distance', title='Trip Distance (miles)', scale=alt.Scale(domain=(0, 20))),
-            y=alt.Y('fare', title='Fare Amount ($)', scale=alt.Scale(domain=(0, 60))),
-            color=alt.Color('year:N', scale=alt.Scale(range=['#FF7A00', '#0A84FF'])),
-            tooltip=['year', 'distance', 'fare']
-        ).properties(height=400).configure_axis(labelColor='#e6eef9', titleColor='#e6eef9') \
-         .configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
-        st.altair_chart(c, use_container_width=True)
-    else:
-        st.info("No data to plot trip fare vs. distance.")
-    st.markdown("""
-    **Purpose:** Examines pricing consistency across trip distances. **Relevance:** Reveals if fare structures are stable, useful for ensuring fairness in pricing and stable driver income.
-    """)
     
     st.subheader("NYC — Average Tip Percentage by Payment Type")
     # New query for NYC average tip percentage
@@ -1075,20 +1038,17 @@ with tab_comp:
 
 with tab_conc:
     st.markdown("""
-    ### Summary of Findings
-    This section summarizes the key insights and recommendations derived from the data analysis across all tabs.
+    ### Key Findings & Conclusion
+    This analysis reveals fundamental shifts in urban transportation, providing data-driven insights for future policy.
 
     ---
-    ### Insights & Recommendations
     <div class="block">
       <ul>
-        <li><b>Payment Trends:</b> The shift from cash to credit card payments is a major trend in NYC, suggesting a need for streamlined digital payment options and a potential decrease in cash handling requirements.</li>
-        <li><b>Vendor Market Shift:</b> Analyze the change in vendor market share to understand competitive dynamics and potential new market players or consolidation.</li>
-        <li><b>Peak Management:</b> Use hourly peaks (above) to align <i>train frequency</i> and <i>bus headways</i>, especially where Chicago traffic shows <i>lower avg speeds</i> in 2023 vs 2019.</li>
-        <li><b>Station Ops:</b> Top CTA stations with consistent growth should be prioritized for <i>platform staffing</i> and <i>crowd control</i> during peak windows.</li>
-        <li><b>Rideshare Zones:</b> NYC PULocationID hotspots (ranked above) suggest <i>dedicated curb zones</i> and <i>pickup signage</i> to reduce conflicts.</li>
-        <li><b>Congestion Relief:</b> Where <i>traffic avg speed dips</i> coincide with <i>high CTA ridership</i>, consider <i>bus-only lanes</i> and <i>TSP (signal priority)</i>.</li>
-        <li><b>Subsidy Tuning:</b> Compare 2023/2019 recovery by month; target incentives to <i>off-peak</i> or <i>under-recovered corridors</i>.</li>
+        <li><b>New York City:</b> Experienced a **56% decline** in taxi trips from 2019 to 2023, while average fares increased by **48.7%**, indicating a shift toward higher-value trips.</li>
+        <li><b>Chicago:</b> Saw a **60.5% reduction** in taxi trip volume, but average trip distance increased by **80%**, showing a fundamental change in travel patterns.</li>
+        <li><b>Revenue Resilience:</b> Despite significant trip volume declines, both cities demonstrated successful adaptations, maintaining economic viability through pricing and service model changes.</li>
+        <li><b>Spatial Persistence:</b> Major business districts and transportation hubs in both cities maintained their dominance as key demand hotspots, providing a stable basis for infrastructure planning.</li>
+        <li><b>Policy Direction:</b> The data supports targeted, flexible policies that adapt to new travel patterns, rather than trying to restore pre-pandemic models.</li>
       </ul>
     </div>
     """, unsafe_allow_html=True)
