@@ -77,9 +77,9 @@ MD_DB_NAME = "taxi_assign"
 
 # NOTE: The user's provided token is removed for security and a placeholder is used.
 # If you run this code, you will need to replace this with your own valid token.
-MD_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imthc2hlZW5hcGVyc29uYWxAZ21haWwuY29tIiwic2Vzc2lvbiI6Imthc2hlZW5hcGVyc29uYWwuZ21haWwuY29tIiwicGF0IjoiUEk4WnZwcC1zNEFDZFYtRWYxaEtoX0k2aFZoZmhDTTJQRTRGY2Y5UVJQWSIsInVzZXJJZCI6Ijk4MWZiMjYzLTQ1NzEtNDk2OS04NWNkLWM0ZjA3MGE0ZTg4YSIsImlzcyI6Im1kX3BhdCIsInJlYWRPbmx5IjpmYWxzZSwidG9rZW5UeXBlIjoicmVhZF93cml0ZSIsImlhdCI6MTc1NTE3ODI4Mn0.bjWdIVWu-3suCbmyRu0UEr-jSu8kPmfpYrZ5xPH_-xo" 
+MD_TOKEN = "your_motherduck_token_here"
 
-if not MD_TOKEN or MD_TOKEN == "your_motherduck_token_here":
+if not MD_TOKEN or MD_TOKEN == "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imthc2hlZW5hcGVyc29uYWxAZ21haWwuY29tIiwic2Vzc2lvbiI6Imthc2hlZW5hcGVyc29uYWwuZ21haWwuY29tIiwicGF0IjoiUEk4WnZwcC1zNEFDZFYtRWYxaEtoX0k2aFZoZmhDTTJQRTRGY2Y5UVJQWSIsInVzZXJJZCI6Ijk4MWZiMjYzLTQ1NzEtNDk2OS04NWNkLWM0ZjA3MGE0ZTg4YSIsImlzcyI6Im1kX3BhdCIsInJlYWRPbmx5IjpmYWxzZSwidG9rZW5UeXBlIjoicmVhZF93cml0ZSIsImlhdCI6MTc1NTE3ODI4Mn0.bjWdIVWu-3suCbmyRu0UEr-jSu8kPmfpYrZ5xPH_-xo":
     st.error("MotherDuck token not found. Add MOTHERDUCK_TOKEN to your Streamlit secrets or environment.")
     st.stop()
 
@@ -241,13 +241,63 @@ st.markdown("<hr/>", unsafe_allow_html=True)
 # -----------------------------
 # Tabs
 # -----------------------------
-tab_nyc, tab_chi, tab_traffic, tab_comp, tab_conc = st.tabs([
+tab_landing, tab_nyc, tab_chi, tab_traffic, tab_comp, tab_conc = st.tabs([
+    "Project Overview",
     "NYC Taxi (2019 vs 2023)",
     "Chicago Taxi (2019 vs 2023)",
     "Chicago Traffic & L-Rides",
     "NYC vs. Chicago",
     "Conclusions"
 ])
+
+with tab_landing:
+    st.markdown("""
+    # Taxi & Public Transportation Ridership Impact on Policy
+    <p style="color: var(--muted); font-size: 1.25rem;">Informing Transportation Policy in Chicago & NYC</p>
+
+    ---
+    <div class="block">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <p style="margin:0; font-weight:600;">Presenters:</p>
+          <p style="margin:0; color:var(--muted);">Ankit, Kasheena, Bickramjit (Group 7)</p>
+        </div>
+        <div>
+          <p style="margin:0; font-weight:600;">Course:</p>
+          <p style="margin:0; color:var(--muted);">MSDSP 420 Database Systems</p>
+        </div>
+      </div>
+    </div>
+
+    ---
+
+    ### EXECUTIVE SUMMARY & BUSINESS OBJECTIVES
+    <div class="block">
+      <p><b>Core Problem:</b> Analyze urban mobility changes (taxi & public transit) pre/post-COVID to inform policy and reduce congestion in Chicago & NYC.</p>
+      <br/>
+      <p><b>Key Questions:</b></p>
+      <ul>
+        <li>How have ridership patterns shifted (pre/post-COVID)?</li>
+        <li>Are current subsidies effectively recovering demand?</li>
+        <li>How can CTA infrastructure address Chicago traffic congestion?</li>
+      </ul>
+      <p><b>Expected Outcomes:</b> Data-driven recommendations for policy, infrastructure, and operational optimization.</p>
+    </div>
+
+    ---
+
+    ### Dashboard Summary
+    <div class="block">
+      <ul>
+        <li>The dashboard compares taxi trip data and public transit ridership between **2019** (pre-pandemic) and **2023** (post-pandemic) to highlight recovery trends.</li>
+        <li>**Key Performance Indicators (KPIs)** at the top provide a quick view of taxi trip counts and recovery rates for both Chicago and NYC.</li>
+        <li>Charts are organized into tabs to analyze **monthly and hourly trip patterns**, payment method shifts, and vendor market share.</li>
+        <li>Specific focus is given to **Chicago traffic congestion** and its relationship with CTA L-train ridership.</li>
+        <li>The final tab, **"Conclusions,"** summarizes the key findings and offers actionable insights for urban planners and transportation authorities.</li>
+      </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
 
 with tab_nyc:
     st.markdown("""
@@ -298,7 +348,7 @@ with tab_nyc:
         st.altair_chart(c, use_container_width=True)
     else:
         st.info("No NYC data for selected year(s).")
-    
+
     # Additional charts for NYC monthly metrics
     st.subheader("NYC — Average Trip Distance & Revenue by Month")
     if not nyc_monthly.empty:
@@ -309,7 +359,7 @@ with tab_nyc:
             tooltip=['year', 'month', alt.Tooltip('avg_distance:Q', format=".2f")]
         ).properties(height=200).configure_axis(labelColor='#e6eef9', titleColor='#e6eef9').configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
         st.altair_chart(c1, use_container_width=True)
-        
+
         c2 = alt.Chart(nyc_monthly).mark_line(point=True).encode(
             x=alt.X('month:O', title='Month', axis=alt.Axis(format=".0f")),
             y=alt.Y('avg_revenue:Q', title='Avg Revenue ($)'),
@@ -500,7 +550,7 @@ with tab_chi:
         st.altair_chart(c, use_container_width=True)
     else:
         st.info("No Chicago data for selected year(s).")
-    
+
     # Additional charts for Chicago monthly metrics
     st.subheader("Chicago — Average Trip Distance & Revenue by Month")
     if not chi_monthly.empty:
@@ -816,7 +866,7 @@ with tab_conc:
         <li><b>Station Ops:</b> Top CTA stations with consistent growth should be prioritized for <i>platform staffing</i> and <i>crowd control</i> during peak windows.</li>
         <li><b>Rideshare Zones:</b> NYC PULocationID hotspots (ranked above) suggest <i>dedicated curb zones</i> and <i>pickup signage</i> to reduce conflicts.</li>
         <li><b>Congestion Relief:</b> Where <i>traffic avg speed dips</i> coincide with <i>high CTA ridership</i>, consider <i>bus-only lanes</i> and <i>TSP (signal priority)</i>.</li>
-        <li><b>Subsidy Tuning:</i> Compare 2023/2019 recovery by month; target incentives to <i>off-peak</i> or <i>under-recovered corridors</i>.</li>
+        <li><b>Subsidy Tuning:</b> Compare 2023/2019 recovery by month; target incentives to <i>off-peak</i> or <i>under-recovered corridors</i>.</li>
       </ul>
     </div>
     """, unsafe_allow_html=True)
