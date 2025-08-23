@@ -499,40 +499,6 @@ with tab_nyc:
             st.altair_chart(c, use_container_width=True)
         else:
             st.info("No NYC vendor data for selected year(s).")
-
-    st.markdown("---")
-    st.subheader("NYC — Trip Fare vs. Distance (Sample)")
-    # New query for NYC fare vs distance scatter plot
-    sql_nyc_scatter = f"""
-    SELECT
-        2019 AS year,
-        trip_distance AS distance,
-        fare_amount AS fare
-    FROM {DB_ALIAS}.main.yellow_taxi_2019_1
-    WHERE trip_distance > 0 AND fare_amount > 0 AND fare_amount < 100
-    USING SAMPLE 10000 ROWS
-    UNION ALL
-    SELECT
-        2023 AS year,
-        trip_distance AS distance,
-        fare_amount AS fare
-    FROM {DB_ALIAS}.main.yellow_taxi_2023
-    WHERE trip_distance > 0 AND fare_amount > 0 AND fare_amount < 100
-    USING SAMPLE 10000 ROWS;
-    """
-    nyc_scatter_df = qdf(sql_nyc_scatter)
-
-    if not nyc_scatter_df.empty:
-        c = alt.Chart(nyc_scatter_df).mark_point(filled=True, opacity=0.4).encode(
-            x=alt.X('distance', title='Trip Distance (miles)', scale=alt.Scale(domain=(0, 20))),
-            y=alt.Y('fare', title='Fare Amount ($)', scale=alt.Scale(domain=(0, 60))),
-            color=alt.Color('year:N', scale=alt.Scale(range=['#FF7A00', '#0A84FF'])),
-            tooltip=['year', 'distance', 'fare']
-        ).properties(height=400).configure_axis(labelColor='#e6eef9', titleColor='#e6eef9') \
-         .configure_legend(labelColor='#e6eef9', titleColor='#e6eef9')
-        st.altair_chart(c, use_container_width=True)
-    else:
-        st.info("No data to plot trip fare vs. distance.")
     
     st.subheader("NYC — Average Tip Percentage by Payment Type")
     # New query for NYC average tip percentage
